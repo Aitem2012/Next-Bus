@@ -10,3 +10,6 @@ C:\Users\hp\source\repos\NextBus\NextBus.Application\obj\Debug\net5.0\NextBus.Ap
 C:\Users\hp\source\repos\NextBus\NextBus.Application\obj\Debug\net5.0\NextBus.Application.dll
 C:\Users\hp\source\repos\NextBus\NextBus.Application\obj\Debug\net5.0\ref\NextBus.Application.dll
 C:\Users\hp\source\repos\NextBus\NextBus.Application\obj\Debug\net5.0\NextBus.Application.pdb
+C:\Users\hp\source\repos\NextBus\NextBus.Application\bin\Debug\net5.0\NextBus.Domain.dll
+C:\Users\hp\source\repos\NextBus\NextBus.Application\bin\Debug\net5.0\NextBus.Domain.pdb
+C:\Users\hp\source\repos\NextBus\NextBus.Application\obj\Debug\net5.0\NextBus.Application.csproj.CopyComplete

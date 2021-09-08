@@ -2,7 +2,7 @@
 
 namespace NextBus.Domain
 {
-    public class Transaction
+    public class Transaction : BaseEntity
     {
         public DateTime Date { get; set; }
         public string Description { get; set; }
