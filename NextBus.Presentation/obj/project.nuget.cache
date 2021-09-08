@@ -1,8 +1,15 @@
 {
   "version": 2,
-  "dgSpecHash": "3Z5MLTEFqWGZW2IkYI82rd0EdcB/DUrydYFR8PoSwk2jjNA+E+ucoLhDq8zneb+qDLFG2n8w/sS4Isi/2ZuP7w==",
+  "dgSpecHash": "NCu4++dOcetqgcM33w0ontx7PIkRZPmFBBy9/NIFHE01Fkm8lJaC5L2R72gV9C7Z2vYNRG3fvBERhYM7Rh7z9w==",
   "success": true,
-  "projectFilePath": "C:\\Users\\hp\\source\\repos\\NextBus\\NextBus.Presentation\\NextBus.Presentation.csproj",
-  "expectedPackageFiles": [],
+  "projectFilePath": "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Presentation\\NextBus.Presentation.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\hp\\.nuget\\packages\\fluentvalidation\\10.3.3\\fluentvalidation.10.3.3.nupkg.sha512",
+    "C:\\Users\\hp\\.nuget\\packages\\fluentvalidation.aspnetcore\\10.3.3\\fluentvalidation.aspnetcore.10.3.3.nupkg.sha512",
+    "C:\\Users\\hp\\.nuget\\packages\\fluentvalidation.dependencyinjectionextensions\\10.3.3\\fluentvalidation.dependencyinjectionextensions.10.3.3.nupkg.sha512",
+    "C:\\Users\\hp\\.nuget\\packages\\mediatr\\9.0.0\\mediatr.9.0.0.nupkg.sha512",
+    "C:\\Users\\hp\\.nuget\\packages\\mediatr.extensions.microsoft.dependencyinjection\\9.0.0\\mediatr.extensions.microsoft.dependencyinjection.9.0.0.nupkg.sha512",
+    "C:\\Users\\hp\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\2.1.0\\microsoft.extensions.dependencyinjection.abstractions.2.1.0.nupkg.sha512"
+  ],
   "logs": []
 }

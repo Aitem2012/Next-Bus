@@ -747,11 +747,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\hp\\source\\repos\\NextBus\\NextBus.Domain\\NextBus.Domain.csproj",
+      "projectUniqueName": "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Domain\\NextBus.Domain.csproj",
       "projectName": "NextBus.Domain",
-      "projectPath": "C:\\Users\\hp\\source\\repos\\NextBus\\NextBus.Domain\\NextBus.Domain.csproj",
+      "projectPath": "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Domain\\NextBus.Domain.csproj",
       "packagesPath": "C:\\Users\\hp\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\hp\\source\\repos\\NextBus\\NextBus.Domain\\obj\\",
+      "outputPath": "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Domain\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

@@ -14,11 +14,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\hp\\source\\repos\\NextBus\\NextBus.Infrastructure\\NextBus.Infrastructure.csproj",
+      "projectUniqueName": "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Infrastructure\\NextBus.Infrastructure.csproj",
       "projectName": "NextBus.Infrastructure",
-      "projectPath": "C:\\Users\\hp\\source\\repos\\NextBus\\NextBus.Infrastructure\\NextBus.Infrastructure.csproj",
+      "projectPath": "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Infrastructure\\NextBus.Infrastructure.csproj",
       "packagesPath": "C:\\Users\\hp\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\hp\\source\\repos\\NextBus\\NextBus.Infrastructure\\obj\\",
+      "outputPath": "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Infrastructure\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
