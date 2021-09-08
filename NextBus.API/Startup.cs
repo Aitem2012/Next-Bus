@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using NextBus.Common.Extensions;
 
 namespace NextBus.API
 {
@@ -31,6 +32,8 @@ namespace NextBus.API
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "NextBus.API", Version = "v1" });
             });
+
+            services.AddApplicationServices(Configuration);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

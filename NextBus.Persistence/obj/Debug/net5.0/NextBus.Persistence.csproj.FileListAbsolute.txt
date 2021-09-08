@@ -10,3 +10,11 @@ C:\Users\hp\source\repos\NextBus\NextBus.Persistence\obj\Debug\net5.0\NextBus.Pe
 C:\Users\hp\source\repos\NextBus\NextBus.Persistence\obj\Debug\net5.0\NextBus.Persistence.dll
 C:\Users\hp\source\repos\NextBus\NextBus.Persistence\obj\Debug\net5.0\ref\NextBus.Persistence.dll
 C:\Users\hp\source\repos\NextBus\NextBus.Persistence\obj\Debug\net5.0\NextBus.Persistence.pdb
+C:\Users\hp\source\repos\NextBus\NextBus.Persistence\bin\Debug\net5.0\NextBus.Persistence.runtimeconfig.json
+C:\Users\hp\source\repos\NextBus\NextBus.Persistence\bin\Debug\net5.0\NextBus.Persistence.runtimeconfig.dev.json
+C:\Users\hp\source\repos\NextBus\NextBus.Persistence\bin\Debug\net5.0\NextBus.Application.dll
+C:\Users\hp\source\repos\NextBus\NextBus.Persistence\bin\Debug\net5.0\NextBus.Domain.dll
+C:\Users\hp\source\repos\NextBus\NextBus.Persistence\bin\Debug\net5.0\NextBus.Application.pdb
+C:\Users\hp\source\repos\NextBus\NextBus.Persistence\bin\Debug\net5.0\NextBus.Domain.pdb
+C:\Users\hp\source\repos\NextBus\NextBus.Persistence\obj\Debug\net5.0\NextBus.Persistence.csproj.CopyComplete
+C:\Users\hp\source\repos\NextBus\NextBus.Persistence\obj\Debug\net5.0\NextBus.Persistence.genruntimeconfig.cache
