@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\hp\\source\\repos\\NextBus\\NextBus.Presentation\\NextBus.Presentation.csproj": {}
+    "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Presentation\\NextBus.Presentation.csproj": {}
   },
   "projects": {
-    "C:\\Users\\hp\\source\\repos\\NextBus\\NextBus.Presentation\\NextBus.Presentation.csproj": {
+    "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Presentation\\NextBus.Presentation.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\hp\\source\\repos\\NextBus\\NextBus.Presentation\\NextBus.Presentation.csproj",
+        "projectUniqueName": "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Presentation\\NextBus.Presentation.csproj",
         "projectName": "NextBus.Presentation",
-        "projectPath": "C:\\Users\\hp\\source\\repos\\NextBus\\NextBus.Presentation\\NextBus.Presentation.csproj",
+        "projectPath": "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Presentation\\NextBus.Presentation.csproj",
         "packagesPath": "C:\\Users\\hp\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\hp\\source\\repos\\NextBus\\NextBus.Presentation\\obj\\",
+        "outputPath": "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Presentation\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -43,6 +43,16 @@
       "frameworks": {
         "net5.0": {
           "targetAlias": "net5.0",
+          "dependencies": {
+            "FluentValidation.AspNetCore": {
+              "target": "Package",
+              "version": "[10.3.3, )"
+            },
+            "MediatR.Extensions.Microsoft.DependencyInjection": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            }
+          },
           "imports": [
             "net461",
             "net462",

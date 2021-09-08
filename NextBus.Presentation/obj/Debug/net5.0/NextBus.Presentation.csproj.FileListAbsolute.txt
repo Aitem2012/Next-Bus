@@ -10,3 +10,15 @@ C:\Users\hp\source\repos\NextBus\NextBus.Presentation\obj\Debug\net5.0\NextBus.P
 C:\Users\hp\source\repos\NextBus\NextBus.Presentation\obj\Debug\net5.0\NextBus.Presentation.dll
 C:\Users\hp\source\repos\NextBus\NextBus.Presentation\obj\Debug\net5.0\ref\NextBus.Presentation.dll
 C:\Users\hp\source\repos\NextBus\NextBus.Presentation\obj\Debug\net5.0\NextBus.Presentation.pdb
+C:\Users\hp\Source\Repos\Next-Bus\NextBus.Presentation\bin\Debug\net5.0\NextBus.Presentation.deps.json
+C:\Users\hp\Source\Repos\Next-Bus\NextBus.Presentation\bin\Debug\net5.0\NextBus.Presentation.dll
+C:\Users\hp\Source\Repos\Next-Bus\NextBus.Presentation\bin\Debug\net5.0\ref\NextBus.Presentation.dll
+C:\Users\hp\Source\Repos\Next-Bus\NextBus.Presentation\bin\Debug\net5.0\NextBus.Presentation.pdb
+C:\Users\hp\Source\Repos\Next-Bus\NextBus.Presentation\obj\Debug\net5.0\NextBus.Presentation.csproj.AssemblyReference.cache
+C:\Users\hp\Source\Repos\Next-Bus\NextBus.Presentation\obj\Debug\net5.0\NextBus.Presentation.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\hp\Source\Repos\Next-Bus\NextBus.Presentation\obj\Debug\net5.0\NextBus.Presentation.AssemblyInfoInputs.cache
+C:\Users\hp\Source\Repos\Next-Bus\NextBus.Presentation\obj\Debug\net5.0\NextBus.Presentation.AssemblyInfo.cs
+C:\Users\hp\Source\Repos\Next-Bus\NextBus.Presentation\obj\Debug\net5.0\NextBus.Presentation.csproj.CoreCompileInputs.cache
+C:\Users\hp\Source\Repos\Next-Bus\NextBus.Presentation\obj\Debug\net5.0\NextBus.Presentation.dll
+C:\Users\hp\Source\Repos\Next-Bus\NextBus.Presentation\obj\Debug\net5.0\ref\NextBus.Presentation.dll
+C:\Users\hp\Source\Repos\Next-Bus\NextBus.Presentation\obj\Debug\net5.0\NextBus.Presentation.pdb
