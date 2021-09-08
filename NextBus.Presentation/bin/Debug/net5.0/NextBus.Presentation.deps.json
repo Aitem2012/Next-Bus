@@ -1,0 +1,23 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v5.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v5.0": {
+      "NextBus.Presentation/1.0.0": {
+        "runtime": {
+          "NextBus.Presentation.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "NextBus.Presentation/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
