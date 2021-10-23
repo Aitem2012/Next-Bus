@@ -14,6 +14,7 @@ namespace NextBus.Common.Extensions
             {
                 option.UseSqlite(config.GetConnectionString("DefaultConnection"));
             });
+           
             return services;
         }
     }

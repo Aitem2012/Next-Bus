@@ -13,8 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\NextBus.Common\NextBus.Common.csproj" />
-    <ProjectReference Include="..\NextBus.Persistence\NextBus.Persistence.csproj" />
+    <ProjectReference Include="..\NextBus.Presentation\NextBus.Presentation.csproj" />
   </ItemGroup>
 
 </Project>

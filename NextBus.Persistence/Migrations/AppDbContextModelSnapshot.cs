@@ -144,7 +144,103 @@ namespace NextBus.Persistence.Migrations
                     b.ToTable("AspNetUserTokens");
                 });
 
-            modelBuilder.Entity("NextBus.Domain.AppUser", b =>
+            modelBuilder.Entity("NextBus.Domain.Buses.Bus", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("BusNo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("DateCreated")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DateUpdated")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Destination")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DriverAppUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("DriverId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsVacant")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Seat")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TakeOffPoint")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("TotalAvailableSeat")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DriverAppUserId");
+
+                    b.ToTable("Buses");
+                });
+
+            modelBuilder.Entity("NextBus.Domain.Drivers.Driver", b =>
+                {
+                    b.Property<string>("AppUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DriverIdentificationNumber")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("AppUserId");
+
+                    b.ToTable("Drivers");
+                });
+
+            modelBuilder.Entity("NextBus.Domain.Transactions.Transaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AppUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DateCreated")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("DateUpdated")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsSuccessful")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Reference")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Type")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppUserId");
+
+                    b.ToTable("Transactions");
+                });
+
+            modelBuilder.Entity("NextBus.Domain.Users.AppUser", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("TEXT");
@@ -229,103 +325,7 @@ namespace NextBus.Persistence.Migrations
                     b.ToTable("AspNetUsers");
                 });
 
-            modelBuilder.Entity("NextBus.Domain.Bus", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("DateCreated")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("DateUpdated")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Destination")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("DriverAppUserId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsVacant")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Seat")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("TakeOffPoint")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("TotalAvailableSeat")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DriverAppUserId");
-
-                    b.ToTable("Buses");
-                });
-
-            modelBuilder.Entity("NextBus.Domain.Driver", b =>
-                {
-                    b.Property<string>("AppUserId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("AppUserId1")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("DriverIdentificationNumber")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("AppUserId");
-
-                    b.HasIndex("AppUserId1");
-
-                    b.ToTable("Drivers");
-                });
-
-            modelBuilder.Entity("NextBus.Domain.Transaction", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("AppUserId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("Date")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("DateCreated")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("DateUpdated")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsSuccessful")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Reference")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Type")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AppUserId");
-
-                    b.ToTable("Transactions");
-                });
-
-            modelBuilder.Entity("NextBus.Domain.Wallet", b =>
+            modelBuilder.Entity("NextBus.Domain.Wallets.Wallet", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -360,7 +360,7 @@ namespace NextBus.Persistence.Migrations
                     b.ToTable("Wallets");
                 });
 
-            modelBuilder.Entity("NextBus.Domain.WalletHistory", b =>
+            modelBuilder.Entity("NextBus.Domain.Wallets.WalletHistory", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -411,7 +411,7 @@ namespace NextBus.Persistence.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
                 {
-                    b.HasOne("NextBus.Domain.AppUser", null)
+                    b.HasOne("NextBus.Domain.Users.AppUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -420,7 +420,7 @@ namespace NextBus.Persistence.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
                 {
-                    b.HasOne("NextBus.Domain.AppUser", null)
+                    b.HasOne("NextBus.Domain.Users.AppUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -435,7 +435,7 @@ namespace NextBus.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("NextBus.Domain.AppUser", null)
+                    b.HasOne("NextBus.Domain.Users.AppUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -444,66 +444,70 @@ namespace NextBus.Persistence.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
                 {
-                    b.HasOne("NextBus.Domain.AppUser", null)
+                    b.HasOne("NextBus.Domain.Users.AppUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("NextBus.Domain.Bus", b =>
+            modelBuilder.Entity("NextBus.Domain.Buses.Bus", b =>
                 {
-                    b.HasOne("NextBus.Domain.Driver", "Driver")
+                    b.HasOne("NextBus.Domain.Drivers.Driver", "Driver")
                         .WithMany()
                         .HasForeignKey("DriverAppUserId");
 
                     b.Navigation("Driver");
                 });
 
-            modelBuilder.Entity("NextBus.Domain.Driver", b =>
+            modelBuilder.Entity("NextBus.Domain.Drivers.Driver", b =>
                 {
-                    b.HasOne("NextBus.Domain.AppUser", "AppUser")
-                        .WithMany()
-                        .HasForeignKey("AppUserId1")
+                    b.HasOne("NextBus.Domain.Users.AppUser", "AppUser")
+                        .WithOne("Driver")
+                        .HasForeignKey("NextBus.Domain.Drivers.Driver", "AppUserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("AppUser");
                 });
 
-            modelBuilder.Entity("NextBus.Domain.Transaction", b =>
+            modelBuilder.Entity("NextBus.Domain.Transactions.Transaction", b =>
                 {
-                    b.HasOne("NextBus.Domain.AppUser", "AppUser")
-                        .WithMany()
+                    b.HasOne("NextBus.Domain.Users.AppUser", "AppUser")
+                        .WithMany("Transactions")
                         .HasForeignKey("AppUserId");
 
                     b.Navigation("AppUser");
                 });
 
-            modelBuilder.Entity("NextBus.Domain.Wallet", b =>
+            modelBuilder.Entity("NextBus.Domain.Wallets.Wallet", b =>
                 {
-                    b.HasOne("NextBus.Domain.AppUser", "AppUser")
+                    b.HasOne("NextBus.Domain.Users.AppUser", "AppUser")
                         .WithOne("Wallet")
-                        .HasForeignKey("NextBus.Domain.Wallet", "AppUserId");
+                        .HasForeignKey("NextBus.Domain.Wallets.Wallet", "AppUserId");
 
                     b.Navigation("AppUser");
                 });
 
-            modelBuilder.Entity("NextBus.Domain.WalletHistory", b =>
+            modelBuilder.Entity("NextBus.Domain.Wallets.WalletHistory", b =>
                 {
-                    b.HasOne("NextBus.Domain.Wallet", "Wallet")
+                    b.HasOne("NextBus.Domain.Wallets.Wallet", "Wallet")
                         .WithMany("Histories")
                         .HasForeignKey("WalletId");
 
                     b.Navigation("Wallet");
                 });
 
-            modelBuilder.Entity("NextBus.Domain.AppUser", b =>
+            modelBuilder.Entity("NextBus.Domain.Users.AppUser", b =>
                 {
+                    b.Navigation("Driver");
+
+                    b.Navigation("Transactions");
+
                     b.Navigation("Wallet");
                 });
 
-            modelBuilder.Entity("NextBus.Domain.Wallet", b =>
+            modelBuilder.Entity("NextBus.Domain.Wallets.Wallet", b =>
                 {
                     b.Navigation("Histories");
                 });

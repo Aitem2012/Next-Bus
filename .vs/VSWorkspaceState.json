@@ -1,7 +1,13 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\NextBus.Common",
+    "\\NextBus.Common\\Extensions",
+    "\\NextBus.Presentation",
+    "\\NextBus.Presentation\\Buses",
+    "\\NextBus.Presentation\\Buses\\Models",
+    "\\NextBus.Presentation\\Buses\\Models\\Result"
   ],
-  "SelectedNode": "\\NextBus.sln",
+  "SelectedNode": "\\NextBus.Presentation\\Buses\\Models\\Result\\GetBusQueryResult.cs",
   "PreviewInSolutionExplorer": false
 }
