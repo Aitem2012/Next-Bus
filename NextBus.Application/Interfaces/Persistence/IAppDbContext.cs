@@ -1,7 +1,11 @@
-﻿using System.Threading;
+﻿using Microsoft.EntityFrameworkCore;
+using NextBus.Domain.Buses;
+using NextBus.Domain.Drivers;
+using NextBus.Domain.Transactions;
+using NextBus.Domain.Users;
+using NextBus.Domain.Wallets;
+using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using NextBus.Domain;
 
 namespace NextBus.Application.Interfaces.Persistence
 {
