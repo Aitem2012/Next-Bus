@@ -14,7 +14,6 @@ C:\Users\hp\Source\Repos\Next-Bus\NextBus.Infrastructure\bin\Debug\net5.0\NextBu
 C:\Users\hp\Source\Repos\Next-Bus\NextBus.Infrastructure\bin\Debug\net5.0\NextBus.Infrastructure.dll
 C:\Users\hp\Source\Repos\Next-Bus\NextBus.Infrastructure\bin\Debug\net5.0\ref\NextBus.Infrastructure.dll
 C:\Users\hp\Source\Repos\Next-Bus\NextBus.Infrastructure\bin\Debug\net5.0\NextBus.Infrastructure.pdb
-C:\Users\hp\Source\Repos\Next-Bus\NextBus.Infrastructure\obj\Debug\net5.0\NextBus.Infrastructure.csproj.AssemblyReference.cache
 C:\Users\hp\Source\Repos\Next-Bus\NextBus.Infrastructure\obj\Debug\net5.0\NextBus.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
 C:\Users\hp\Source\Repos\Next-Bus\NextBus.Infrastructure\obj\Debug\net5.0\NextBus.Infrastructure.AssemblyInfoInputs.cache
 C:\Users\hp\Source\Repos\Next-Bus\NextBus.Infrastructure\obj\Debug\net5.0\NextBus.Infrastructure.AssemblyInfo.cs
@@ -22,3 +21,4 @@ C:\Users\hp\Source\Repos\Next-Bus\NextBus.Infrastructure\obj\Debug\net5.0\NextBu
 C:\Users\hp\Source\Repos\Next-Bus\NextBus.Infrastructure\obj\Debug\net5.0\NextBus.Infrastructure.dll
 C:\Users\hp\Source\Repos\Next-Bus\NextBus.Infrastructure\obj\Debug\net5.0\ref\NextBus.Infrastructure.dll
 C:\Users\hp\Source\Repos\Next-Bus\NextBus.Infrastructure\obj\Debug\net5.0\NextBus.Infrastructure.pdb
+C:\Users\hp\Source\Repos\Next-Bus\NextBus.Infrastructure\obj\Debug\net5.0\NextBus.Infrastructure.csproj.AssemblyReference.cache

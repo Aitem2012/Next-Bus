@@ -14,7 +14,6 @@ C:\Users\hp\Source\Repos\Next-Bus\NextBus.Domain\bin\Debug\net5.0\NextBus.Domain
 C:\Users\hp\Source\Repos\Next-Bus\NextBus.Domain\bin\Debug\net5.0\NextBus.Domain.dll
 C:\Users\hp\Source\Repos\Next-Bus\NextBus.Domain\bin\Debug\net5.0\ref\NextBus.Domain.dll
 C:\Users\hp\Source\Repos\Next-Bus\NextBus.Domain\bin\Debug\net5.0\NextBus.Domain.pdb
-C:\Users\hp\Source\Repos\Next-Bus\NextBus.Domain\obj\Debug\net5.0\NextBus.Domain.csproj.AssemblyReference.cache
 C:\Users\hp\Source\Repos\Next-Bus\NextBus.Domain\obj\Debug\net5.0\NextBus.Domain.GeneratedMSBuildEditorConfig.editorconfig
 C:\Users\hp\Source\Repos\Next-Bus\NextBus.Domain\obj\Debug\net5.0\NextBus.Domain.AssemblyInfoInputs.cache
 C:\Users\hp\Source\Repos\Next-Bus\NextBus.Domain\obj\Debug\net5.0\NextBus.Domain.AssemblyInfo.cs
@@ -22,3 +21,4 @@ C:\Users\hp\Source\Repos\Next-Bus\NextBus.Domain\obj\Debug\net5.0\NextBus.Domain
 C:\Users\hp\Source\Repos\Next-Bus\NextBus.Domain\obj\Debug\net5.0\NextBus.Domain.dll
 C:\Users\hp\Source\Repos\Next-Bus\NextBus.Domain\obj\Debug\net5.0\ref\NextBus.Domain.dll
 C:\Users\hp\Source\Repos\Next-Bus\NextBus.Domain\obj\Debug\net5.0\NextBus.Domain.pdb
+C:\Users\hp\Source\Repos\Next-Bus\NextBus.Domain\obj\Debug\net5.0\NextBus.Domain.csproj.AssemblyReference.cache
