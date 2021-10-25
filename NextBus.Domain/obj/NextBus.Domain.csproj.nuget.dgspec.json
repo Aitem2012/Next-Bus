@@ -1,24 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Domain\\NextBus.Domain.csproj": {}
+    "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Domain\\NextBus.Domain.csproj": {}
   },
   "projects": {
-    "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Domain\\NextBus.Domain.csproj": {
+    "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Domain\\NextBus.Domain.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Domain\\NextBus.Domain.csproj",
+        "projectUniqueName": "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Domain\\NextBus.Domain.csproj",
         "projectName": "NextBus.Domain",
-        "projectPath": "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Domain\\NextBus.Domain.csproj",
-        "packagesPath": "C:\\Users\\hp\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Domain\\obj\\",
+        "projectPath": "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Domain\\NextBus.Domain.csproj",
+        "packagesPath": "C:\\Users\\iajumoko\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Domain\\obj\\",
         "projectStyle": "PackageReference",
-        "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-        ],
         "configFilePaths": [
-          "C:\\Users\\hp\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Users\\iajumoko\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
@@ -50,7 +46,7 @@
             },
             "Microsoft.AspNetCore.Identity.EntityFrameworkCore": {
               "target": "Package",
-              "version": "[5.0.9, )"
+              "version": "[5.0.11, )"
             }
           },
           "imports": [

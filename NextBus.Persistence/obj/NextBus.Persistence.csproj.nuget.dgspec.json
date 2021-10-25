@@ -1,24 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Persistence\\NextBus.Persistence.csproj": {}
+    "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Persistence\\NextBus.Persistence.csproj": {}
   },
   "projects": {
-    "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Application\\NextBus.Application.csproj": {
+    "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Application\\NextBus.Application.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Application\\NextBus.Application.csproj",
+        "projectUniqueName": "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Application\\NextBus.Application.csproj",
         "projectName": "NextBus.Application",
-        "projectPath": "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Application\\NextBus.Application.csproj",
-        "packagesPath": "C:\\Users\\hp\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Application\\obj\\",
+        "projectPath": "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Application\\NextBus.Application.csproj",
+        "packagesPath": "C:\\Users\\iajumoko\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Application\\obj\\",
         "projectStyle": "PackageReference",
-        "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-        ],
         "configFilePaths": [
-          "C:\\Users\\hp\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Users\\iajumoko\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
@@ -32,8 +28,8 @@
           "net5.0": {
             "targetAlias": "net5.0",
             "projectReferences": {
-              "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Domain\\NextBus.Domain.csproj": {
-                "projectPath": "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Domain\\NextBus.Domain.csproj"
+              "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Domain\\NextBus.Domain.csproj": {
+                "projectPath": "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Domain\\NextBus.Domain.csproj"
               }
             }
           }
@@ -66,21 +62,17 @@
         }
       }
     },
-    "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Domain\\NextBus.Domain.csproj": {
+    "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Domain\\NextBus.Domain.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Domain\\NextBus.Domain.csproj",
+        "projectUniqueName": "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Domain\\NextBus.Domain.csproj",
         "projectName": "NextBus.Domain",
-        "projectPath": "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Domain\\NextBus.Domain.csproj",
-        "packagesPath": "C:\\Users\\hp\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Domain\\obj\\",
+        "projectPath": "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Domain\\NextBus.Domain.csproj",
+        "packagesPath": "C:\\Users\\iajumoko\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Domain\\obj\\",
         "projectStyle": "PackageReference",
-        "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-        ],
         "configFilePaths": [
-          "C:\\Users\\hp\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Users\\iajumoko\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
@@ -112,7 +104,7 @@
             },
             "Microsoft.AspNetCore.Identity.EntityFrameworkCore": {
               "target": "Package",
-              "version": "[5.0.9, )"
+              "version": "[5.0.11, )"
             }
           },
           "imports": [
@@ -134,21 +126,17 @@
         }
       }
     },
-    "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Persistence\\NextBus.Persistence.csproj": {
+    "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Persistence\\NextBus.Persistence.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Persistence\\NextBus.Persistence.csproj",
+        "projectUniqueName": "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Persistence\\NextBus.Persistence.csproj",
         "projectName": "NextBus.Persistence",
-        "projectPath": "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Persistence\\NextBus.Persistence.csproj",
-        "packagesPath": "C:\\Users\\hp\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Persistence\\obj\\",
+        "projectPath": "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Persistence\\NextBus.Persistence.csproj",
+        "packagesPath": "C:\\Users\\iajumoko\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Persistence\\obj\\",
         "projectStyle": "PackageReference",
-        "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-        ],
         "configFilePaths": [
-          "C:\\Users\\hp\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Users\\iajumoko\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
@@ -162,8 +150,8 @@
           "net5.0": {
             "targetAlias": "net5.0",
             "projectReferences": {
-              "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Application\\NextBus.Application.csproj": {
-                "projectPath": "C:\\Users\\hp\\Source\\Repos\\Next-Bus\\NextBus.Application\\NextBus.Application.csproj"
+              "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Application\\NextBus.Application.csproj": {
+                "projectPath": "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Application\\NextBus.Application.csproj"
               }
             }
           }
@@ -180,13 +168,13 @@
           "dependencies": {
             "Microsoft.EntityFrameworkCore.Sqlite": {
               "target": "Package",
-              "version": "[5.0.9, )"
+              "version": "[5.0.11, )"
             },
             "Microsoft.EntityFrameworkCore.Tools": {
               "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
               "suppressParent": "All",
               "target": "Package",
-              "version": "[5.0.9, )"
+              "version": "[5.0.11, )"
             },
             "Microsoft.Extensions.Configuration": {
               "target": "Package",
