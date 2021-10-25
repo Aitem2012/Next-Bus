@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\iajumoko\\source\\repos\\Next-Bus\\NextBus.Infrastructure\\NextBus.Infrastructure.csproj": {}
+    "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Infrastructure\\NextBus.Infrastructure.csproj": {}
   },
   "projects": {
-    "C:\\Users\\iajumoko\\source\\repos\\Next-Bus\\NextBus.Infrastructure\\NextBus.Infrastructure.csproj": {
+    "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Infrastructure\\NextBus.Infrastructure.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\iajumoko\\source\\repos\\Next-Bus\\NextBus.Infrastructure\\NextBus.Infrastructure.csproj",
+        "projectUniqueName": "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Infrastructure\\NextBus.Infrastructure.csproj",
         "projectName": "NextBus.Infrastructure",
-        "projectPath": "C:\\Users\\iajumoko\\source\\repos\\Next-Bus\\NextBus.Infrastructure\\NextBus.Infrastructure.csproj",
+        "projectPath": "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Infrastructure\\NextBus.Infrastructure.csproj",
         "packagesPath": "C:\\Users\\iajumoko\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\iajumoko\\source\\repos\\Next-Bus\\NextBus.Infrastructure\\obj\\",
+        "outputPath": "C:\\Users\\iajumoko\\Source\\Repos\\Next-Bus\\NextBus.Infrastructure\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\iajumoko\\AppData\\Roaming\\NuGet\\NuGet.Config",
@@ -22,10 +22,6 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "http://nuget.service.axxess.tech/nuget/agencycore": {},
-          "http://nuget.service.axxess.tech/nuget/integrations": {},
-          "http://nuget.service.axxess.tech/nuget/rcm": {},
-          "http://nuget.service.axxess.tech/nuget/shared": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
