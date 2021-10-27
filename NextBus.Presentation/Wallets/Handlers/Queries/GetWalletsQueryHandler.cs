@@ -24,7 +24,7 @@ namespace NextBus.Presentation.Wallets.Handlers.Queries
           }
           public async Task<IEnumerable<GetWalletQueryResult>> Handle(GetWalletsQuery request, CancellationToken cancellationToken)
           {
-               var wallets = await _context.Wallets.ToListAsync(cancellationToken);
+               var wallets = await _context.Wallets.Include(x => x.AppUser).ToListAsync(cancellationToken);
                
 
                return _mapper.Map<IEnumerable<GetWalletQueryResult>>(wallets);
