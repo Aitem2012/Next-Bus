@@ -11,12 +11,14 @@ using NextBus.Domain.Buses;
 using NextBus.Domain.Drivers;
 using NextBus.Domain.Users;
 using NextBus.Domain.Wallets;
+using NextBus.Presentation.Core;
 using NextBus.Presentation.Drivers.Commands;
 using NextBus.Presentation.Drivers.Models.Results;
+using NextBus.Presentation.Users.Models.Result;
 
 namespace NextBus.Presentation.Drivers.Handlers.Commands
 {
-    public class CreateDriverCommandHandler : IRequestHandler<CreateDriverCommand, GetDriverQueryResult>
+    public class CreateDriverCommandHandler : IRequestHandler<CreateDriverCommand, Result<GetDriverQueryResult>>
     {
         private readonly IAppDbContext _context;
         private readonly IMapper _mapper;
@@ -32,11 +34,15 @@ namespace NextBus.Presentation.Drivers.Handlers.Commands
             _roleManager = roleManager;
         }
 
-        public async Task<GetDriverQueryResult> Handle(CreateDriverCommand request, CancellationToken cancellationToken)
+        public async Task<Result<GetDriverQueryResult>> Handle(CreateDriverCommand request, CancellationToken cancellationToken)
         {
-            var driver = _mapper.Map<Driver>(request);
-            driver.AppUser = _mapper.Map<AppUser>(request.User);
-            driver.AppUser.Wallet = new Wallet
+            var user = _mapper.Map<AppUser>(request.User);
+
+            if (user == null) throw new NotImplementedException();
+            //var driver = _mapper.Map<Driver>(request);
+            //driver.AppUser = _mapper.Map<AppUser>(request.User);
+            
+            user.Wallet = new Wallet
             {
                 Balance = 0,
                 DateCreated = DateTime.Now,
@@ -44,13 +50,21 @@ namespace NextBus.Presentation.Drivers.Handlers.Commands
                 Reference = "NxBS".GenerateRef(),
 
             };
-            driver.AppUser.EmailConfirmed = true;
-            driver.AppUser.PhoneNumberConfirmed = false;
-            driver.AppUser.UserName = request.User.Email;
-            //driver.Bus = _mapper.Map<Bus>(request.Bus);
-            var user = _mapper.Map<AppUser>(driver);
+            user.EmailConfirmed = true;
+            user.PhoneNumberConfirmed = false;
+            user.UserName = request.User.Email;
 
-            if (_userManager.FindByEmailAsync(request.User.Email) == null)
+            user.Driver = _mapper.Map<Driver>(request);
+            user.Driver.Bus.DateCreated = DateTime.UtcNow;
+            user.Driver.Bus.DateUpdated = DateTime.UtcNow;
+            //driver.Bus = _mapper.Map<Bus>(request.Bus);
+            //var user = _mapper.Map<AppUser>(request.User);
+            if (await _userManager.FindByEmailAsync(request.User.Email) != null)
+            {
+                return Result<GetDriverQueryResult>.Failure("Email Exist");
+            }
+
+            if (_userManager.FindByEmailAsync(request.User.Email).Result == null)
             {
                 var result = await _userManager.CreateAsync(user, request.User.Password);
                 if (result.Succeeded)
@@ -77,9 +91,20 @@ namespace NextBus.Presentation.Drivers.Handlers.Commands
                         new Claim(ClaimTypes.Email, user.Email)
                     }).Result;
                 }
+
+               // var bus = _mapper.Map<Bus>(request.Bus);
+               // bus.DateCreated = DateTime.UtcNow;
+               // bus.DateUpdated = DateTime.UtcNow;
+               // bus.DriverId = user.Id;
+               // bus.Driver = user.Driver;
+               // //bus.Driver = driver;
+               // //driver.AppUserId = user.Id;
+               // await _context.Buses.AddAsync(bus, cancellationToken);
+               //// await _context.Drivers.AddAsync(driver, cancellationToken);
+               // await _context.SaveChangesAsync(cancellationToken);
             }
 
-            return _mapper.Map(user, new GetDriverQueryResult());
+            return Result<GetDriverQueryResult>.Success(_mapper.Map(user, new GetDriverQueryResult()));
         }
     }
 }
