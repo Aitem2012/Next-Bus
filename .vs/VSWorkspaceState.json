@@ -1,7 +1,8 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\NextBus.Domain"
   ],
-  "SelectedNode": "\\NextBus.sln",
+  "SelectedNode": "\\NextBus.Domain\\NextBus.Domain.csproj",
   "PreviewInSolutionExplorer": false
 }

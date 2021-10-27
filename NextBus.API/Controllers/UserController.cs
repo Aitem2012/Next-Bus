@@ -50,7 +50,7 @@ namespace NextBus.API.Controllers
             return CreatedAtRoute("GetUser", new {userId = result.Id}, user);
         }
 
-        [HttpPost("{userId}", Name = "DeleteUser"),
+        [HttpDelete("{userId}", Name = "DeleteUser"),
          ProducesResponseType(typeof(DeleteUserCommandResult), StatusCodes.Status410Gone), ProducesDefaultResponseType]
         public async Task<IActionResult> DeleteUser(string userId)
         {

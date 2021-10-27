@@ -1,4 +1,5 @@
-﻿using AutoMapper;
+﻿using System;
+using AutoMapper;
 using MediatR;
 using NextBus.Application.Interfaces.Persistence;
 using NextBus.Domain.Buses;
@@ -22,6 +23,8 @@ namespace NextBus.Presentation.Buses.Handlers.Commands
         public async Task<GetBusQueryResult> Handle(CreateBusCommand request, CancellationToken cancellationToken)
         {
             var bus = _mapper.Map<Bus>(request);
+            bus.DateCreated = DateTime.UtcNow;
+            bus.DateUpdated = DateTime.UtcNow;
             await _context.Buses.AddAsync(bus, cancellationToken);
 
             await _context.SaveChangesAsync(cancellationToken);
