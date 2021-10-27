@@ -7,4 +7,4 @@ build_property.PublishSingleFile =
 build_property.IncludeAllContentForSelfExtract = 
 build_property._SupportedPlatformList = Android,iOS,Linux,macOS,Windows
 build_property.RootNamespace = NextBus.Infrastructure
-build_property.ProjectDir = C:\Users\iajumoko\source\repos\Next-Bus\NextBus.Infrastructure\
+build_property.ProjectDir = C:\Users\iajumoko\Source\Repos\Next-Bus\NextBus.Infrastructure\

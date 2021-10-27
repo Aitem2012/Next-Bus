@@ -28,14 +28,20 @@ namespace NextBus.Presentation.Wallets.Handlers.Commands
           public async Task<GetWalletHistoryQueryResult> Handle(AddFundToWalletCommand request, CancellationToken cancellationToken)
           {
                var wallet = _context.Wallets.Single(e => e.AppUserId.Equals(request.AppUserId));
+               wallet.Balance = _context.WalletHistories.Where(x => x.WalletAppUserId == request.AppUserId)
+                   .Select(x => x.Amount).ToList().Sum();
                var walletHistory = _mapper.Map<WalletHistory>(request);
                walletHistory.Date = DateTime.Now;
                walletHistory.Type = "TOP UP";
                walletHistory.WalletAppUserId = wallet.AppUserId;
                walletHistory.Reference = "NSBS".GenerateRef();
+               walletHistory.DateUpdated = DateTime.UtcNow;
                walletHistory.Details = $"{walletHistory.Amount.ToString("N")} Added to Wallet on {walletHistory.Date}";
 
+               wallet.Balance += request.Amount;
+               wallet.LastUpdated = DateTime.UtcNow;
                
+               _context.Wallets.Attach(wallet);
                await _context.WalletHistories.AddAsync(walletHistory, cancellationToken);
                var result = await _context.SaveChangesAsync(cancellationToken);
 

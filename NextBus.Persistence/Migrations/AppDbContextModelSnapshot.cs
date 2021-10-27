@@ -14,7 +14,7 @@ namespace NextBus.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "5.0.9");
+                .HasAnnotation("ProductVersion", "5.0.11");
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
@@ -162,12 +162,6 @@ namespace NextBus.Persistence.Migrations
                     b.Property<string>("Destination")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("DriverAppUserId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("DriverId")
-                        .HasColumnType("TEXT");
-
                     b.Property<bool>("IsVacant")
                         .HasColumnType("INTEGER");
 
@@ -182,8 +176,6 @@ namespace NextBus.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DriverAppUserId");
-
                     b.ToTable("Buses");
                 });
 
@@ -192,10 +184,15 @@ namespace NextBus.Persistence.Migrations
                     b.Property<string>("AppUserId")
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid>("BusId")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("DriverIdentificationNumber")
                         .HasColumnType("TEXT");
 
                     b.HasKey("AppUserId");
+
+                    b.HasIndex("BusId");
 
                     b.ToTable("Drivers");
                 });
@@ -451,15 +448,6 @@ namespace NextBus.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("NextBus.Domain.Buses.Bus", b =>
-                {
-                    b.HasOne("NextBus.Domain.Drivers.Driver", "Driver")
-                        .WithMany()
-                        .HasForeignKey("DriverAppUserId");
-
-                    b.Navigation("Driver");
-                });
-
             modelBuilder.Entity("NextBus.Domain.Drivers.Driver", b =>
                 {
                     b.HasOne("NextBus.Domain.Users.AppUser", "AppUser")
@@ -468,7 +456,15 @@ namespace NextBus.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("NextBus.Domain.Buses.Bus", "Bus")
+                        .WithMany()
+                        .HasForeignKey("BusId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("AppUser");
+
+                    b.Navigation("Bus");
                 });
 
             modelBuilder.Entity("NextBus.Domain.Transactions.Transaction", b =>

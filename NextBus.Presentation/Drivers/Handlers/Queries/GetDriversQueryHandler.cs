@@ -21,7 +21,7 @@ namespace NextBus.Presentation.Drivers.Handlers.Queries
         }
         public async Task<GetDriverQueryResult> Handle(GetDriverQuery request, CancellationToken cancellationToken)
         {
-            var driver = await _context.Drivers.SingleAsync(x => x.AppUserId == request.Id, cancellationToken);
+            var driver = await _context.Drivers.Include(e => e.AppUser).Include(e => e.Bus).SingleAsync(x => x.AppUserId == request.Id, cancellationToken);
 
             return _mapper.Map(driver, new GetDriverQueryResult());
         }

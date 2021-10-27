@@ -22,21 +22,27 @@ namespace NextBus.API.Mapper
             CreateMap<UpdateUserCommand, AppUser>();
             CreateMap<AppUser, GetUserQueryResult>()
                 .ForMember(e => e.Transactions, opt => opt.MapFrom(s => s.Transactions.Count));
+            CreateMap<AppUser, GetDriverQueryResult>();
 
             CreateMap<Wallet, GetWalletQueryResult>()
-                .ForMember(e => e.FullName, opt => opt.MapFrom(s => $"{s.AppUser.Firstname} {s.AppUser.Lastname}"))
-                .ForMember(e => e.Histories, opt => opt.MapFrom(s => s.Histories.Count));
+                .ForMember(e => e.FullName, opt => opt.MapFrom(s => $"{s.AppUser.Firstname} {s.AppUser.Lastname}"));
 
+            CreateMap<CreateDriverCommand, Bus>();
             CreateMap<AddFundToWalletCommand, WalletHistory>();
             CreateMap<RemoveFundFromWalletCommand, WalletHistory>();
             CreateMap<WalletHistory, GetWalletHistoryQueryResult>();
             CreateMap<CreateDriverCommand, Driver>().ReverseMap();
             CreateMap<Driver, AppUser>().ReverseMap();
             CreateMap<UpdateDriverCommand, Driver>().ReverseMap();
-            CreateMap<Driver, GetDriverQueryResult>().ReverseMap();
+            CreateMap<Driver, GetDriverQueryResult>()
+                .ForMember(e => e.Firstname, opt => opt.MapFrom(s => s.AppUser.Firstname))
+                .ForMember(e=> e.Lastname, opt => opt.MapFrom(s => s.AppUser.Lastname))
+                .ForMember(e => e.Id, opt => opt.MapFrom(s => s.AppUser.Id))
+                .ForMember(e => e.DriverIdentificationNumber, opt => opt.MapFrom(s => s.DriverIdentificationNumber));
             CreateMap<CreateBusCommand, Bus>().ReverseMap();
             CreateMap<UpdateBusCommand, Bus>();
             CreateMap<Bus, GetBusQueryResult>();
+                //.ForMember(e => e.DriverName, opt => opt.MapFrom(s => $"{s.Driver.AppUser.Firstname} {s.Driver.AppUser.Lastname}"));
         }
         
     }

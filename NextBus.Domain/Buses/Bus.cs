@@ -12,7 +12,7 @@ namespace NextBus.Domain.Buses
         public int Seat { get; set; }
         public int TotalAvailableSeat { get; set; }
         public bool IsVacant { get; set; }
-        public virtual Driver Driver { get; set; }
-        public Guid DriverId { get; set; }
+        //public virtual Driver Driver { get; set; }
+        //public string DriverId { get; set; }
     }
 }
