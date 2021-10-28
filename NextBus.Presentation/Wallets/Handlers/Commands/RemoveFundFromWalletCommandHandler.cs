@@ -13,39 +13,44 @@ using System.Threading.Tasks;
 namespace NextBus.Presentation.Wallets.Handlers.Commands
 {
     public class RemoveFundFromWalletCommandHandler : IRequestHandler<RemoveFundFromWalletCommand, GetWalletHistoryQueryResult>
-     {
-          private readonly IAppDbContext _context;
-          private readonly IMapper _mapper;
-          private readonly IMediator _mediator;
+    {
+        private readonly IAppDbContext _context;
+        private readonly IMapper _mapper;
+        private readonly IMediator _mediator;
 
-          public RemoveFundFromWalletCommandHandler(IAppDbContext context, IMapper mapper, IMediator mediator)
-          {
-               _context = context;
-               _mapper = mapper;
-               _mediator = mediator;
-          }
+        public RemoveFundFromWalletCommandHandler(IAppDbContext context, IMapper mapper, IMediator mediator)
+        {
+            _context = context;
+            _mapper = mapper;
+            _mediator = mediator;
+        }
 
-          public async Task<GetWalletHistoryQueryResult> Handle(RemoveFundFromWalletCommand request, CancellationToken cancellationToken)
-          {
-               var wallet = _context.Wallets.Single(e => e.AppUserId.Equals(request.AppUserId));
-               var walletHistory = _mapper.Map<WalletHistory>(request);
-               walletHistory.Date = DateTime.Now;
-               walletHistory.Type = "Debit";
-               walletHistory.WalletAppUserId = wallet.AppUserId;
-               walletHistory.Reference = "NSBS".GenerateRef();
-               walletHistory.Details = $"{walletHistory.Amount.ToString("N")} Removed from Wallet on {walletHistory.Date}";
+        public async Task<GetWalletHistoryQueryResult> Handle(RemoveFundFromWalletCommand request, CancellationToken cancellationToken)
+        {
+            var wallet = _context.Wallets.Single(e => e.AppUserId.Equals(request.AppUserId));
+            wallet.Balance = _context.WalletHistories.Where(x => x.WalletAppUserId == request.AppUserId && x.Type == "TOP UP")
+                .Select(x => x.Amount).ToList().Sum();
+            var walletHistory = _mapper.Map<WalletHistory>(request);
+            walletHistory.Date = DateTime.Now;
+            walletHistory.Type = "Debit";
+            walletHistory.WalletAppUserId = wallet.AppUserId;
+            walletHistory.Reference = "NSBS".GenerateRef();
+            walletHistory.Details = $"{walletHistory.Amount.ToString("N")} Removed from Wallet on {walletHistory.Date}";
 
-               
-               await _context.WalletHistories.AddAsync(walletHistory, cancellationToken);
-               var result = await _context.SaveChangesAsync(cancellationToken);
+            wallet.Balance -= request.Amount;
+            wallet.LastUpdated = DateTime.UtcNow;
 
-               if (result > 0)
-               {
-                    wallet.Balance -= walletHistory.Amount;
-                    wallet.LastUpdated = DateTime.Now;
-               }
+            _context.Wallets.Attach(wallet);
+            await _context.WalletHistories.AddAsync(walletHistory, cancellationToken);
+            var result = await _context.SaveChangesAsync(cancellationToken);
 
-               return _mapper.Map(walletHistory, new GetWalletHistoryQueryResult());
-          }
-     }
+            if (result > 0)
+            {
+                wallet.Balance -= walletHistory.Amount;
+                wallet.LastUpdated = DateTime.Now;
+            }
+
+            return _mapper.Map(walletHistory, new GetWalletHistoryQueryResult());
+        }
+    }
 }
