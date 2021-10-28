@@ -27,6 +27,13 @@ namespace NextBus.API.Controllers
             var buses = await Mediator.Send(new GetBusesQuery());
             return Ok(buses);
         }
+
+        [HttpGet("GetBusToMyDestination", Name = "GetBusToMyDestination"), ProducesResponseType(typeof(IEnumerable<GetBusQueryResult>), StatusCodes.Status200OK), ProducesDefaultResponseType]
+        public async Task<IActionResult> GetBusesToMyDestination(string queryParams)
+        {
+            var buses = await Mediator.Send(new GetBusForUserQuery{QueryParams = queryParams});
+            return Ok(buses);
+        }
         [HttpGet("{busId}", Name = "GetBus"), ProducesResponseType(typeof(GetBusQueryResult), StatusCodes.Status200OK), ProducesDefaultResponseType]
         public async Task<IActionResult> GetBus(Guid busId)
         {
