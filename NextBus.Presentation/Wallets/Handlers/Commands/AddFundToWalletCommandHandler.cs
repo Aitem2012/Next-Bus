@@ -28,7 +28,7 @@ namespace NextBus.Presentation.Wallets.Handlers.Commands
           public async Task<GetWalletHistoryQueryResult> Handle(AddFundToWalletCommand request, CancellationToken cancellationToken)
           {
                var wallet = _context.Wallets.Single(e => e.AppUserId.Equals(request.AppUserId));
-               wallet.Balance = _context.WalletHistories.Where(x => x.WalletAppUserId == request.AppUserId)
+               wallet.Balance = _context.WalletHistories.Where(x => x.WalletAppUserId == request.AppUserId && x.Type == "TOP UP")
                    .Select(x => x.Amount).ToList().Sum();
                var walletHistory = _mapper.Map<WalletHistory>(request);
                walletHistory.Date = DateTime.Now;
