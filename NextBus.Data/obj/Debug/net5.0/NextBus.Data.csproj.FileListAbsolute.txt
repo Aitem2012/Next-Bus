@@ -1,0 +1,12 @@
+C:\Users\iajumoko\source\repos\Next-Bus\NextBus.Data\bin\Debug\net5.0\NextBus.Data.deps.json
+C:\Users\iajumoko\source\repos\Next-Bus\NextBus.Data\bin\Debug\net5.0\NextBus.Data.dll
+C:\Users\iajumoko\source\repos\Next-Bus\NextBus.Data\bin\Debug\net5.0\ref\NextBus.Data.dll
+C:\Users\iajumoko\source\repos\Next-Bus\NextBus.Data\bin\Debug\net5.0\NextBus.Data.pdb
+C:\Users\iajumoko\source\repos\Next-Bus\NextBus.Data\obj\Debug\net5.0\NextBus.Data.csproj.AssemblyReference.cache
+C:\Users\iajumoko\source\repos\Next-Bus\NextBus.Data\obj\Debug\net5.0\NextBus.Data.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\iajumoko\source\repos\Next-Bus\NextBus.Data\obj\Debug\net5.0\NextBus.Data.AssemblyInfoInputs.cache
+C:\Users\iajumoko\source\repos\Next-Bus\NextBus.Data\obj\Debug\net5.0\NextBus.Data.AssemblyInfo.cs
+C:\Users\iajumoko\source\repos\Next-Bus\NextBus.Data\obj\Debug\net5.0\NextBus.Data.csproj.CoreCompileInputs.cache
+C:\Users\iajumoko\source\repos\Next-Bus\NextBus.Data\obj\Debug\net5.0\NextBus.Data.dll
+C:\Users\iajumoko\source\repos\Next-Bus\NextBus.Data\obj\Debug\net5.0\ref\NextBus.Data.dll
+C:\Users\iajumoko\source\repos\Next-Bus\NextBus.Data\obj\Debug\net5.0\NextBus.Data.pdb

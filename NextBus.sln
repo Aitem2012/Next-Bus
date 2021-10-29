@@ -15,6 +15,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NextBus.Application", "Next
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NextBus.Common", "NextBus.Common\NextBus.Common.csproj", "{0251BDB7-D602-4B9F-9382-44B83A17D0B7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NextBus.Data", "NextBus.Data\NextBus.Data.csproj", "{6EB62A61-A450-45E2-8B1F-ED873A6A8AD4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -45,6 +47,10 @@ Global
 		{0251BDB7-D602-4B9F-9382-44B83A17D0B7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0251BDB7-D602-4B9F-9382-44B83A17D0B7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0251BDB7-D602-4B9F-9382-44B83A17D0B7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6EB62A61-A450-45E2-8B1F-ED873A6A8AD4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6EB62A61-A450-45E2-8B1F-ED873A6A8AD4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6EB62A61-A450-45E2-8B1F-ED873A6A8AD4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6EB62A61-A450-45E2-8B1F-ED873A6A8AD4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
