@@ -5,6 +5,7 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
+  workflow_dispatch:
 
 jobs:
   build-test-and-deploy:
@@ -138,7 +139,7 @@ jobs:
           TARGET_PATH="/var/www/nextbus-dev-api"
 
           echo "Syncing build artifacts to ${DEPLOY_USER}@${VPS_HOST}:${TARGET_PATH}..."
-          rsync -avz --delete --exclude 'appsettings.Local.json' publish_output/ ${DEPLOY_USER}@${VPS_HOST}:${TARGET_PATH}/
+          rsync -avz --delete --exclude 'appsettings.Local.json' --exclude 'appsettings.Production.json' publish_output/ ${DEPLOY_USER}@${VPS_HOST}:${TARGET_PATH}/
 
       - name: Configure Systemd and Nginx on VPS
         if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
