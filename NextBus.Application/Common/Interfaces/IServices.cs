@@ -48,4 +48,12 @@ namespace NextBus.Application.Common.Interfaces
     {
         Task<Result<VehicleOcrResultDto>> ExtractAndVerifyPlateAsync(string frontPhoto, string backPhoto, string submittedPlate);
     }
+
+    public interface ICloudinaryService
+    {
+        Task<Result<string>> UploadImageAsync(System.IO.Stream fileStream, string fileName, string folder);
+        Task<Result<string>> UploadBase64ImageAsync(string base64Data, string folder, string? fileName = null);
+        Task<Result<string>> UploadDocumentAsync(System.IO.Stream fileStream, string fileName, string folder);
+        Task<Result<bool>> DeleteAsync(string publicId);
+    }
 }

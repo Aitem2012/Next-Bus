@@ -23,6 +23,7 @@ namespace NextBus.Infrastructure
             // Identity & Vehicle Verification Services
             services.AddHttpClient<IQoreIdService, QoreIdService>();
             services.AddScoped<IVehicleOcrService, VehicleOcrService>();
+            services.AddSingleton<ICloudinaryService, CloudinaryService>();
 
             // Paystack Service with typed HttpClient
             services.AddHttpClient<IPaystackService, PaystackService>();

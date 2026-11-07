@@ -22,6 +22,7 @@ namespace NextBus.API.Controllers
         }
 
         [HttpGet]
+        [HttpGet("my-vehicles")]
         [ProducesResponseType(typeof(Result<List<VehicleDto>>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetMyVehicles()
         {

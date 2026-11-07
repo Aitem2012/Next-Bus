@@ -765,5 +765,59 @@ namespace NextBus.Tests
                 }
             }
         }
+
+        [Fact]
+        public async Task QoreIdService_ShouldVerifyBvnAndNinContinuously_InTestMode()
+        {
+            var config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    { "QoreId:BaseUrl", "https://api.qoreid.com" },
+                    { "QoreId:ClientId", "98CQY9HFI5A2JMXITE3U" },
+                    { "QoreId:ClientSecret", "985c761048c34a63b1ebfad3284c1ca8" },
+                    { "QoreId:IsTestMode", "true" }
+                })
+                .Build();
+
+            var loggerMock = new Mock<ILogger<QoreIdService>>();
+            var httpClient = new HttpClient();
+            var qoreIdService = new QoreIdService(httpClient, config, loggerMock.Object);
+
+            // 1. Verify BVN in test mode with any valid 11-digit BVN
+            var bvnResult1 = await qoreIdService.VerifyBvnAsync("22234567890", "Amina", "Okafor");
+            Assert.True(bvnResult1.Succeeded);
+
+            // 2. Continuous testing with same BVN does not get flagged or rejected
+            var bvnResult2 = await qoreIdService.VerifyBvnAsync("22234567890", "Amina", "Okafor");
+            Assert.True(bvnResult2.Succeeded);
+
+            // 3. Verify NIN in test mode
+            var ninResult = await qoreIdService.VerifyNinAsync("10987654321", "Amina", "Okafor");
+            Assert.True(ninResult.Succeeded);
+
+            // 4. Invalid length should be rejected
+            var invalidBvn = await qoreIdService.VerifyBvnAsync("123", "Amina", "Okafor");
+            Assert.False(invalidBvn.Succeeded);
+        }
+
+        [Fact]
+        public async Task CloudinaryService_EmptyBase64_ShouldReturnFailure()
+        {
+            var config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    { "Cloudinary:CloudName", "classicalaitem" },
+                    { "Cloudinary:ApiKey", "898961726654369" },
+                    { "Cloudinary:ApiSecret", "ttpGnA85PWRCystSkLavjyOKC7s" }
+                })
+                .Build();
+
+            var loggerMock = new Mock<ILogger<CloudinaryService>>();
+            var cloudinaryService = new CloudinaryService(config, loggerMock.Object);
+
+            var result = await cloudinaryService.UploadBase64ImageAsync("", "nextbus/vehicles");
+            Assert.False(result.Succeeded);
+            Assert.Contains("cannot be empty", result.Errors[0]);
+        }
     }
 }

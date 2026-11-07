@@ -51,7 +51,7 @@ namespace NextBus.Infrastructure.Services
             try
             {
                 var clientId = _configuration["QoreId:ClientId"];
-                var secretKey = _configuration["QoreId:SecretKey"];
+                var secretKey = _configuration["QoreId:SecretKey"] ?? _configuration["QoreId:ClientSecret"];
 
                 if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(secretKey))
                 {
@@ -101,7 +101,7 @@ namespace NextBus.Infrastructure.Services
 
             try
             {
-                var secretKey = _configuration["QoreId:SecretKey"];
+                var secretKey = _configuration["QoreId:SecretKey"] ?? _configuration["QoreId:ClientSecret"];
                 var request = new HttpRequestMessage(HttpMethod.Post, $"/v1/ng/identities/nin/{nin}");
                 request.Headers.Add("x-api-key", secretKey);
 
@@ -121,3 +121,4 @@ namespace NextBus.Infrastructure.Services
         }
     }
 }
+
