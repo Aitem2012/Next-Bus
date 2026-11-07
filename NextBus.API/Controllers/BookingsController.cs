@@ -40,6 +40,24 @@ namespace NextBus.API.Controllers
             return HandleResult(result);
         }
 
+        [HttpPost("{id:guid}/check-in")]
+        [ProducesResponseType(typeof(Result<RideBookingDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(Result<RideBookingDto>), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> CheckInBooking(Guid id)
+        {
+            var result = await Mediator.Send(new CheckInBookingCommand(id));
+            return HandleResult(result);
+        }
+
+        [HttpPost("{id:guid}/check-out")]
+        [ProducesResponseType(typeof(Result<RideBookingDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(Result<RideBookingDto>), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> CheckOutBooking(Guid id)
+        {
+            var result = await Mediator.Send(new CheckOutBookingCommand(id));
+            return HandleResult(result);
+        }
+
         [HttpGet("my-bookings")]
         [ProducesResponseType(typeof(Result<List<RideBookingDto>>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetMyBookings()

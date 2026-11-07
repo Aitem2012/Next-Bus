@@ -21,6 +21,18 @@ namespace NextBus.Application.Common.Interfaces
     {
         Task SendEmailAsync(string toEmail, string subject, string body);
         Task SendOtpEmailAsync(string toEmail, string userName, string otpCode, string purpose);
+        Task SendBookingAlertEmailAsync(
+            string toEmail, 
+            string driverName, 
+            string passengerName, 
+            string passengerPhone, 
+            string origin, 
+            string destination, 
+            string pickup, 
+            string dropoff, 
+            int seats, 
+            decimal fare, 
+            System.DateTime departureTime);
     }
 
     public interface IOtpService

@@ -25,6 +25,8 @@ namespace NextBus.Domain.Entities
 
         public DateTime RequestedAt { get; set; } = DateTime.UtcNow;
         public DateTime? RespondedAt { get; set; }
+        public DateTime? CheckedInAt { get; set; }
+        public DateTime? CheckedOutAt { get; set; }
         public string? Notes { get; set; }
 
         public virtual Ride? Ride { get; set; }

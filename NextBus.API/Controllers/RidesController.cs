@@ -22,6 +22,16 @@ namespace NextBus.API.Controllers
             return HandleResult(result);
         }
 
+        [Authorize]
+        [HttpPut("{id:guid}")]
+        [ProducesResponseType(typeof(Result<RideDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(Result<RideDto>), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> UpdateRide(Guid id, [FromBody] UpdateRideDto dto)
+        {
+            var result = await Mediator.Send(new UpdateRideCommand(id, dto));
+            return HandleResult(result);
+        }
+
         [HttpGet("search")]
         [ProducesResponseType(typeof(Result<List<RideDto>>), StatusCodes.Status200OK)]
         public async Task<IActionResult> SearchRides([FromQuery] RideSearchQueryDto criteria)

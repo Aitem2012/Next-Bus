@@ -15,6 +15,7 @@ namespace NextBus.Application.Common.Interfaces
         DbSet<WalletHistory> WalletHistories { get; }
         DbSet<Transaction> Transactions { get; }
         DbSet<OtpVerification> OtpVerifications { get; }
+        DbSet<Notification> Notifications { get; }
 
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     }

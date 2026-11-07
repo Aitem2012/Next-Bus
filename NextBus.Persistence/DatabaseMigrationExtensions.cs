@@ -51,6 +51,9 @@ namespace NextBus.Persistence
                 // Apply additive column additions for Vehicle 4-corner photos and OCR if needed
                 await EnsureVehicleColumnsAsync(context, logger);
 
+                // Ensure Notifications table and RideBooking check-in/out columns
+                await EnsureNotificationAndBookingColumnsAsync(context, logger);
+
                 // Seed Roles and Administrator User
                 await SeedRolesAndAdminUserAsync(scope.ServiceProvider, configuration, logger);
 
@@ -88,6 +91,57 @@ ALTER TABLE ""Vehicles"" ADD COLUMN IF NOT EXISTS ""IsApprovedByAdmin"" boolean 
             catch (Exception ex)
             {
                 logger.LogWarning("Notice while verifying vehicle columns: {Message}", ex.Message);
+            }
+        }
+
+        private static async Task EnsureNotificationAndBookingColumnsAsync(AppDbContext context, ILogger logger)
+        {
+            try
+            {
+                if (context.Database.IsNpgsql())
+                {
+                    var sql = @"
+ALTER TABLE ""RideBookings"" ADD COLUMN IF NOT EXISTS ""CheckedInAt"" timestamp with time zone;
+ALTER TABLE ""RideBookings"" ADD COLUMN IF NOT EXISTS ""CheckedOutAt"" timestamp with time zone;
+
+CREATE TABLE IF NOT EXISTS ""Notifications"" (
+    ""Id"" uuid NOT NULL PRIMARY KEY,
+    ""AppUserId"" text NOT NULL,
+    ""Title"" text NOT NULL,
+    ""Message"" text NOT NULL,
+    ""Type"" text NOT NULL DEFAULT 'Booking',
+    ""IsRead"" boolean NOT NULL DEFAULT false,
+    ""ActionUrl"" text,
+    ""CreatedAt"" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ""UpdatedAt"" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS ""IX_Notifications_AppUserId"" ON ""Notifications"" (""AppUserId"");
+CREATE INDEX IF NOT EXISTS ""IX_Notifications_IsRead"" ON ""Notifications"" (""IsRead"");
+";
+                    await context.Database.ExecuteSqlRawAsync(sql);
+                }
+                else if (context.Database.IsSqlite())
+                {
+                    var sql = @"
+CREATE TABLE IF NOT EXISTS ""Notifications"" (
+    ""Id"" TEXT NOT NULL PRIMARY KEY,
+    ""AppUserId"" TEXT NOT NULL,
+    ""Title"" TEXT NOT NULL,
+    ""Message"" TEXT NOT NULL,
+    ""Type"" TEXT NOT NULL DEFAULT 'Booking',
+    ""IsRead"" INTEGER NOT NULL DEFAULT 0,
+    ""ActionUrl"" TEXT,
+    ""CreatedAt"" TEXT NOT NULL,
+    ""UpdatedAt"" TEXT NOT NULL
+);
+";
+                    await context.Database.ExecuteSqlRawAsync(sql);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning("Notice while verifying notification/booking tables: {Message}", ex.Message);
             }
         }
 

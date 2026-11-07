@@ -204,10 +204,18 @@ namespace NextBus.Tests
             userManagerMock.Setup(u => u.FindByIdAsync("passenger-verified")).ReturnsAsync(verifiedPassenger);
 
             var currentUserServiceMock = new Mock<ICurrentUserService>();
+            var notificationServiceMock = new Mock<INotificationService>();
+            var emailServiceMock = new Mock<IEmailService>();
 
             // Case 1: Unverified KYC fails
             currentUserServiceMock.Setup(c => c.UserId).Returns("passenger-unverified");
-            var handler = new RequestRideBookingCommandHandler(context, userManagerMock.Object, currentUserServiceMock.Object, _mapper);
+            var handler = new RequestRideBookingCommandHandler(
+                context, 
+                userManagerMock.Object, 
+                currentUserServiceMock.Object, 
+                notificationServiceMock.Object, 
+                emailServiceMock.Object, 
+                _mapper);
 
             var result1 = await handler.Handle(new RequestRideBookingCommand(new CreateBookingDto
             {
@@ -253,7 +261,11 @@ namespace NextBus.Tests
             var booking = await context.RideBookings.FirstAsync();
             currentUserServiceMock.Setup(c => c.UserId).Returns("driver-1");
 
-            var respondHandler = new RespondToBookingCommandHandler(context, currentUserServiceMock.Object, _mapper);
+            var respondHandler = new RespondToBookingCommandHandler(
+                context, 
+                currentUserServiceMock.Object, 
+                notificationServiceMock.Object, 
+                _mapper);
             var respondResult = await respondHandler.Handle(new RespondToBookingCommand(booking.Id, new RespondBookingDto
             {
                 Accept = true
@@ -818,6 +830,129 @@ namespace NextBus.Tests
             var result = await cloudinaryService.UploadBase64ImageAsync("", "nextbus/vehicles");
             Assert.False(result.Succeeded);
             Assert.Contains("cannot be empty", result.Errors[0]);
+        }
+
+        [Fact]
+        public async Task UpdateRide_And_CheckIn_CheckOut_Workflow_Succeeds()
+        {
+            using var context = CreateInMemoryDbContext();
+            var driver = new AppUser
+            {
+                Id = "driver-test",
+                UserName = "driver@test.com",
+                Email = "driver@test.com",
+                Firstname = "Driver",
+                Lastname = "One",
+                KycStatus = KycStatus.Verified,
+                DriverKycStatus = DriverKycStatus.Verified
+            };
+
+            var passenger = new AppUser
+            {
+                Id = "passenger-test",
+                UserName = "passenger@test.com",
+                Email = "passenger@test.com",
+                Firstname = "Passenger",
+                Lastname = "Two",
+                KycStatus = KycStatus.Verified
+            };
+
+            var vehicle = new Vehicle
+            {
+                Id = Guid.NewGuid(),
+                AppUserId = driver.Id,
+                Make = "Honda",
+                Model = "Civic",
+                PlateNumber = "ABJ-909-CD",
+                TotalSeats = 4,
+                IsActive = true
+            };
+
+            var ride = new Ride
+            {
+                Id = Guid.NewGuid(),
+                DriverId = driver.Id,
+                VehicleId = vehicle.Id,
+                Origin = "Garki",
+                Destination = "Wuse",
+                DepartureTime = DateTime.UtcNow.AddHours(2),
+                TotalSeatsOffered = 3,
+                AvailableSeats = 3,
+                PricePerSeat = 1000m,
+                Status = RideStatus.Scheduled
+            };
+
+            await context.Users.AddRangeAsync(driver, passenger);
+            await context.Vehicles.AddAsync(vehicle);
+            await context.Rides.AddAsync(ride);
+            await context.SaveChangesAsync();
+
+            var currentUserServiceMock = new Mock<ICurrentUserService>();
+            currentUserServiceMock.Setup(c => c.UserId).Returns(driver.Id);
+            var notificationServiceMock = new Mock<INotificationService>();
+
+            // 1. Driver edits ride details (change destination to Maitama, fare to 1200)
+            var updateHandler = new UpdateRideCommandHandler(
+                context, 
+                currentUserServiceMock.Object, 
+                notificationServiceMock.Object, 
+                _mapper);
+
+            var updateResult = await updateHandler.Handle(new UpdateRideCommand(ride.Id, new UpdateRideDto
+            {
+                VehicleId = vehicle.Id,
+                Origin = "Garki",
+                Destination = "Maitama",
+                DepartureTime = DateTime.UtcNow.AddHours(3),
+                TotalSeatsOffered = 4,
+                PricePerSeat = 1200m
+            }), CancellationToken.None);
+
+            Assert.True(updateResult.Succeeded);
+            Assert.Equal("Maitama", updateResult.Data.Destination);
+            Assert.Equal(1200m, updateResult.Data.PricePerSeat);
+
+            // 2. Booking is created and accepted
+            var booking = new RideBooking
+            {
+                Id = Guid.NewGuid(),
+                RideId = ride.Id,
+                PassengerId = passenger.Id,
+                PickupLocation = "Garki",
+                DropoffLocation = "Maitama",
+                SeatsBooked = 1,
+                PricePerSeat = 1200m,
+                TotalFare = 1200m,
+                BookingStatus = BookingStatus.Accepted,
+                PaymentStatus = PaymentStatus.Paid
+            };
+            await context.RideBookings.AddAsync(booking);
+            await context.SaveChangesAsync();
+
+            // 3. Passenger checks in
+            currentUserServiceMock.Setup(c => c.UserId).Returns(passenger.Id);
+            var checkInHandler = new CheckInBookingCommandHandler(
+                context, 
+                currentUserServiceMock.Object, 
+                notificationServiceMock.Object, 
+                _mapper);
+
+            var checkInResult = await checkInHandler.Handle(new CheckInBookingCommand(booking.Id), CancellationToken.None);
+            Assert.True(checkInResult.Succeeded);
+            Assert.Equal(BookingStatus.CheckedIn, checkInResult.Data.BookingStatus);
+            Assert.NotNull(checkInResult.Data.CheckedInAt);
+
+            // 4. Passenger checks out
+            var checkOutHandler = new CheckOutBookingCommandHandler(
+                context, 
+                currentUserServiceMock.Object, 
+                notificationServiceMock.Object, 
+                _mapper);
+
+            var checkOutResult = await checkOutHandler.Handle(new CheckOutBookingCommand(booking.Id), CancellationToken.None);
+            Assert.True(checkOutResult.Succeeded);
+            Assert.Equal(BookingStatus.CheckedOut, checkOutResult.Data.BookingStatus);
+            Assert.NotNull(checkOutResult.Data.CheckedOutAt);
         }
     }
 }

@@ -238,11 +238,16 @@ namespace NextBus.Application.Features.Rides
     {
         private readonly IAppDbContext _context;
         private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationService _notificationService;
 
-        public CancelRideCommandHandler(IAppDbContext context, ICurrentUserService currentUserService)
+        public CancelRideCommandHandler(
+            IAppDbContext context,
+            ICurrentUserService currentUserService,
+            INotificationService notificationService)
         {
             _context = context;
             _currentUserService = currentUserService;
+            _notificationService = notificationService;
         }
 
         public async Task<Result> Handle(CancelRideCommand request, CancellationToken cancellationToken)
@@ -302,6 +307,17 @@ namespace NextBus.Application.Features.Rides
             }
 
             await _context.SaveChangesAsync(cancellationToken);
+
+            foreach (var booking in activeBookings)
+            {
+                await _notificationService.CreateNotificationAsync(
+                    booking.PassengerId,
+                    "⚠️ Ride Cancelled by Driver",
+                    $"The driver cancelled the ride {ride.Origin} → {ride.Destination}. A full refund of ₦{booking.TotalFare:N2} has been returned to your wallet.",
+                    "Ride",
+                    "/my-bookings");
+            }
+
             return Result.Success("Ride cancelled and all passenger fares have been refunded.");
         }
     }

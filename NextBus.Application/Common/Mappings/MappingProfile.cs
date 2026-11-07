@@ -34,6 +34,8 @@ namespace NextBus.Application.Common.Mappings
                 .ForMember(d => d.RecentHistories, opt => opt.MapFrom(s => s.Histories));
 
             CreateMap<WalletHistory, WalletHistoryDto>();
+
+            CreateMap<Notification, NotificationDto>();
         }
     }
 }

@@ -19,6 +19,7 @@ namespace NextBus.Infrastructure
             // Email & OTP Services
             services.AddTransient<IEmailService, EmailService>();
             services.AddScoped<IOtpService, OtpService>();
+            services.AddScoped<INotificationService, NotificationService>();
 
             // Identity & Vehicle Verification Services
             services.AddHttpClient<IQoreIdService, QoreIdService>();

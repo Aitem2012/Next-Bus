@@ -20,6 +20,7 @@ namespace NextBus.Persistence.Context
         public DbSet<WalletHistory> WalletHistories => Set<WalletHistory>();
         public DbSet<Transaction> Transactions => Set<Transaction>();
         public DbSet<OtpVerification> OtpVerifications => Set<OtpVerification>();
+        public DbSet<Notification> Notifications => Set<Notification>();
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -119,6 +120,14 @@ namespace NextBus.Persistence.Context
             {
                 b.HasKey(o => o.Id);
                 b.HasIndex(o => new { o.Email, o.Purpose });
+            });
+
+            // Notification configuration
+            builder.Entity<Notification>(b =>
+            {
+                b.HasKey(n => n.Id);
+                b.HasIndex(n => n.AppUserId);
+                b.HasIndex(n => n.IsRead);
             });
         }
     }

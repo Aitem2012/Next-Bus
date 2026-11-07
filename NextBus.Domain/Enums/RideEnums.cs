@@ -21,7 +21,9 @@ namespace NextBus.Domain.Enums
         Accepted = 2,
         Rejected = 3,
         Completed = 4,
-        Cancelled = 5
+        Cancelled = 5,
+        CheckedIn = 6,
+        CheckedOut = 7
     }
 
     public enum PaymentStatus

@@ -22,6 +22,8 @@ namespace NextBus.Application.DTOs
         public PaymentStatus PaymentStatus { get; set; }
         public DateTime RequestedAt { get; set; }
         public DateTime? RespondedAt { get; set; }
+        public DateTime? CheckedInAt { get; set; }
+        public DateTime? CheckedOutAt { get; set; }
         public string? Notes { get; set; }
 
         // Embedded summary of ride

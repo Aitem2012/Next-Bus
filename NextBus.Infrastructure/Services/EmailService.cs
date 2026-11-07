@@ -291,5 +291,207 @@ namespace NextBus.Infrastructure.Services
 
             await SendEmailAsync(toEmail, subject, body);
         }
+
+        public async Task SendBookingAlertEmailAsync(
+            string toEmail,
+            string driverName,
+            string passengerName,
+            string passengerPhone,
+            string origin,
+            string destination,
+            string pickup,
+            string dropoff,
+            int seats,
+            decimal fare,
+            DateTime departureTime)
+        {
+            var subject = $"NextBus - New Booking Request: {passengerName} reserved {seats} seat(s) ({origin} → {destination})";
+            var year = DateTime.UtcNow.Year;
+            var safeDriverName = string.IsNullOrWhiteSpace(driverName) || driverName.Contains("@") ? "Driver" : driverName;
+            var formattedTime = departureTime.ToString("dddd, MMMM d, yyyy @ h:mm tt UTC");
+
+            var body = $@"<!DOCTYPE html>
+<html lang=""en"">
+<head>
+  <meta charset=""UTF-8"">
+  <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
+  <title>{subject}</title>
+  <style>
+    body {{
+      margin: 0;
+      padding: 0;
+      background-color: #F6F1E7;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #1D1811;
+      -webkit-font-smoothing: antialiased;
+    }}
+    table {{ border-collapse: separate; }}
+    .email-wrapper {{ width: 100%; background-color: #F6F1E7; padding: 40px 15px; }}
+    .email-container {{
+      max-width: 580px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(169, 124, 63, 0.25);
+      box-shadow: 0 10px 30px rgba(27, 42, 74, 0.08);
+    }}
+    .email-header {{
+      background: linear-gradient(135deg, #1B2A4A 0%, #101B33 100%);
+      padding: 32px 30px 26px 30px;
+      text-align: center;
+      border-bottom: 3px solid #A97C3F;
+    }}
+    .brand-title {{
+      color: #ffffff;
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 26px;
+      font-weight: 700;
+      margin: 0 0 4px 0;
+    }}
+    .brand-subtitle {{
+      color: #A97C3F;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      margin: 0;
+    }}
+    .email-body {{
+      padding: 32px 36px;
+    }}
+    .greeting {{
+      font-size: 18px;
+      font-weight: 700;
+      color: #1B2A4A;
+      margin: 0 0 12px 0;
+    }}
+    .intro-text {{
+      font-size: 14px;
+      line-height: 1.6;
+      color: #4A4A4A;
+      margin: 0 0 20px 0;
+    }}
+    .booking-card {{
+      background-color: #FDFBF8;
+      border: 1px solid rgba(169, 124, 63, 0.3);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px 0;
+    }}
+    .route-header {{
+      font-size: 18px;
+      font-weight: 800;
+      color: #1B2A4A;
+      margin-bottom: 14px;
+      font-family: Georgia, serif;
+    }}
+    .detail-row {{
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px dashed #ECE7DE;
+      font-size: 13px;
+    }}
+    .detail-label {{ color: #7A7265; font-weight: 600; }}
+    .detail-val {{ color: #1B2A4A; font-weight: 700; text-align: right; }}
+    .fare-highlight {{
+      color: #A97C3F;
+      font-size: 16px;
+      font-weight: 800;
+    }}
+    .cta-btn {{
+      display: inline-block;
+      background: linear-gradient(135deg, #1B2A4A 0%, #223762 100%);
+      color: #ffffff !important;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 14px 28px;
+      border-radius: 10px;
+      margin-top: 22px;
+      text-align: center;
+      border: 1px solid #A97C3F;
+    }}
+    .email-footer {{
+      background-color: #FAF7F2;
+      padding: 24px 30px;
+      text-align: center;
+      border-top: 1px solid #ECE7DE;
+    }}
+    .footer-copy {{
+      font-size: 11px;
+      color: #8C857B;
+      line-height: 1.6;
+      margin: 0;
+    }}
+  </style>
+</head>
+<body>
+  <div class=""email-wrapper"">
+    <table role=""presentation"" width=""100%"" cellpadding=""0"" cellspacing=""0"">
+      <tr>
+        <td align=""center"">
+          <div class=""email-container"">
+            <div class=""email-header"">
+              <h1 class=""brand-title"">NextBus</h1>
+              <p class=""brand-subtitle"">Rides & Transit Network</p>
+            </div>
+            <div class=""email-body"">
+              <h2 class=""greeting"">Hello {safeDriverName},</h2>
+              <p class=""intro-text"">
+                Great news! You have a new passenger booking request for your offered ride. The fare has been pre-authorized and held in secure escrow.
+              </p>
+
+              <div class=""booking-card"">
+                <div class=""route-header"">{origin} &rarr; {destination}</div>
+                <div class=""detail-row"">
+                  <span class=""detail-label"">Passenger</span>
+                  <span class=""detail-val"">{passengerName} ({passengerPhone})</span>
+                </div>
+                <div class=""detail-row"">
+                  <span class=""detail-label"">Pickup Location</span>
+                  <span class=""detail-val"">{pickup}</span>
+                </div>
+                <div class=""detail-row"">
+                  <span class=""detail-label"">Dropoff Location</span>
+                  <span class=""detail-val"">{dropoff}</span>
+                </div>
+                <div class=""detail-row"">
+                  <span class=""detail-label"">Seats Booked</span>
+                  <span class=""detail-val"">{seats} seat(s)</span>
+                </div>
+                <div class=""detail-row"">
+                  <span class=""detail-label"">Escrow Fare Amount</span>
+                  <span class=""detail-val fare-highlight"">&#8358;{fare:N2}</span>
+                </div>
+                <div class=""detail-row"" style=""border-bottom: none;"">
+                  <span class=""detail-label"">Departure Time</span>
+                  <span class=""detail-val"">{formattedTime}</span>
+                </div>
+              </div>
+
+              <div style=""text-align: center;"">
+                <a href=""https://dev-nextbus.u-check.ng/my-rides"" class=""cta-btn"">
+                  Review &amp; Accept Booking in My Rides &rarr;
+                </a>
+              </div>
+            </div>
+            <div class=""email-footer"">
+              <p class=""footer-copy"">
+                &copy; {year} NextBus Transit Platform by ClassicalAitem. All rights reserved.<br>
+                Notification sent to {toEmail}.
+              </p>
+            </div>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>";
+
+            await SendEmailAsync(toEmail, subject, body);
+        }
     }
 }

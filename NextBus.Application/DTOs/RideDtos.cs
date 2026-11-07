@@ -45,6 +45,21 @@ namespace NextBus.Application.DTOs
         public string? Notes { get; set; }
     }
 
+    public class UpdateRideDto
+    {
+        public Guid VehicleId { get; set; }
+        public string Origin { get; set; } = string.Empty;
+        public string Destination { get; set; } = string.Empty;
+        public string? Stop1 { get; set; }
+        public string? Stop2 { get; set; }
+        public DateTime DepartureTime { get; set; }
+        public int TotalSeatsOffered { get; set; }
+        public int AvailableSeats { get; set; }
+        public decimal PricePerSeat { get; set; }
+        public bool IsPublicTransit { get; set; }
+        public string? Notes { get; set; }
+    }
+
     public class RideSearchQueryDto
     {
         public string? Origin { get; set; }

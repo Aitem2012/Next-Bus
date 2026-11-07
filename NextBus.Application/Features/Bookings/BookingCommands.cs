@@ -36,17 +36,23 @@ namespace NextBus.Application.Features.Bookings
         private readonly IAppDbContext _context;
         private readonly UserManager<AppUser> _userManager;
         private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationService _notificationService;
+        private readonly IEmailService _emailService;
         private readonly IMapper _mapper;
 
         public RequestRideBookingCommandHandler(
             IAppDbContext context,
             UserManager<AppUser> userManager,
             ICurrentUserService currentUserService,
+            INotificationService notificationService,
+            IEmailService emailService,
             IMapper mapper)
         {
             _context = context;
             _userManager = userManager;
             _currentUserService = currentUserService;
+            _notificationService = notificationService;
+            _emailService = emailService;
             _mapper = mapper;
         }
 
@@ -141,6 +147,31 @@ namespace NextBus.Application.Features.Bookings
             await _context.RideBookings.AddAsync(booking, cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);
 
+            // Notify driver via In-App Notification
+            await _notificationService.CreateNotificationAsync(
+                ride.DriverId,
+                "🎉 New Booking Request",
+                $"{passenger.Firstname} {passenger.Lastname} requested {request.Dto.SeatsBooked} seat(s) for {ride.Origin} → {ride.Destination}. ₦{totalFare:N2} reserved in escrow.",
+                "Booking",
+                "/my-rides");
+
+            // Notify driver via Email
+            if (ride.Driver != null && !string.IsNullOrEmpty(ride.Driver.Email))
+            {
+                _ = _emailService.SendBookingAlertEmailAsync(
+                    ride.Driver.Email,
+                    $"{ride.Driver.Firstname} {ride.Driver.Lastname}".Trim(),
+                    $"{passenger.Firstname} {passenger.Lastname}".Trim(),
+                    passenger.PhoneNumber ?? "",
+                    ride.Origin,
+                    ride.Destination,
+                    request.Dto.PickupLocation,
+                    request.Dto.DropoffLocation,
+                    request.Dto.SeatsBooked,
+                    totalFare,
+                    ride.DepartureTime);
+            }
+
             var createdBooking = await _context.RideBookings
                 .Include(b => b.Passenger)
                 .Include(b => b.Ride)
@@ -159,15 +190,18 @@ namespace NextBus.Application.Features.Bookings
     {
         private readonly IAppDbContext _context;
         private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationService _notificationService;
         private readonly IMapper _mapper;
 
         public RespondToBookingCommandHandler(
             IAppDbContext context,
             ICurrentUserService currentUserService,
+            INotificationService notificationService,
             IMapper mapper)
         {
             _context = context;
             _currentUserService = currentUserService;
+            _notificationService = notificationService;
             _mapper = mapper;
         }
 
@@ -236,6 +270,26 @@ namespace NextBus.Application.Features.Bookings
 
             await _context.SaveChangesAsync(cancellationToken);
 
+            // Send In-App notification to the passenger
+            if (request.Dto.Accept)
+            {
+                await _notificationService.CreateNotificationAsync(
+                    booking.PassengerId,
+                    "✅ Booking Confirmed",
+                    $"Your seat booking for {booking.Ride.Origin} → {booking.Ride.Destination} has been accepted by the driver.",
+                    "Booking",
+                    "/my-bookings");
+            }
+            else
+            {
+                await _notificationService.CreateNotificationAsync(
+                    booking.PassengerId,
+                    "❌ Booking Declined",
+                    $"Your seat booking for {booking.Ride.Origin} → {booking.Ride.Destination} was declined and ₦{booking.TotalFare:N2} was refunded to your wallet.",
+                    "Booking",
+                    "/my-bookings");
+            }
+
             return Result<RideBookingDto>.Success(
                 _mapper.Map<RideBookingDto>(booking),
                 request.Dto.Accept ? "Booking accepted." : "Booking rejected and fare refunded to passenger.");
@@ -249,11 +303,16 @@ namespace NextBus.Application.Features.Bookings
     {
         private readonly IAppDbContext _context;
         private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationService _notificationService;
 
-        public CancelBookingCommandHandler(IAppDbContext context, ICurrentUserService currentUserService)
+        public CancelBookingCommandHandler(
+            IAppDbContext context, 
+            ICurrentUserService currentUserService,
+            INotificationService notificationService)
         {
             _context = context;
             _currentUserService = currentUserService;
+            _notificationService = notificationService;
         }
 
         public async Task<Result> Handle(CancelBookingCommand request, CancellationToken cancellationToken)
@@ -310,6 +369,17 @@ namespace NextBus.Application.Features.Bookings
             booking.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync(cancellationToken);
+
+            if (booking.Ride != null)
+            {
+                await _notificationService.CreateNotificationAsync(
+                    booking.Ride.DriverId,
+                    "⚠️ Passenger Cancelled Booking",
+                    $"A passenger cancelled their {booking.SeatsBooked} seat booking for {booking.Ride.Origin} → {booking.Ride.Destination}.",
+                    "Booking",
+                    "/my-rides");
+            }
+
             return Result.Success("Booking cancelled and fare refunded to your wallet.");
         }
     }
@@ -393,6 +463,162 @@ namespace NextBus.Application.Features.Bookings
                 .ToListAsync(cancellationToken);
 
             return Result<List<RideBookingDto>>.Success(_mapper.Map<List<RideBookingDto>>(bookings));
+        }
+    }
+
+    // 6. Check-In Booking Command (Passenger or Driver checks in passenger)
+    public record CheckInBookingCommand(Guid BookingId) : IRequest<Result<RideBookingDto>>;
+
+    public class CheckInBookingCommandHandler : IRequestHandler<CheckInBookingCommand, Result<RideBookingDto>>
+    {
+        private readonly IAppDbContext _context;
+        private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationService _notificationService;
+        private readonly IMapper _mapper;
+
+        public CheckInBookingCommandHandler(
+            IAppDbContext context,
+            ICurrentUserService currentUserService,
+            INotificationService notificationService,
+            IMapper mapper)
+        {
+            _context = context;
+            _currentUserService = currentUserService;
+            _notificationService = notificationService;
+            _mapper = mapper;
+        }
+
+        public async Task<Result<RideBookingDto>> Handle(CheckInBookingCommand request, CancellationToken cancellationToken)
+        {
+            var userId = _currentUserService.UserId;
+            var booking = await _context.RideBookings
+                .Include(b => b.Ride)
+                    .ThenInclude(r => r!.Driver)
+                .Include(b => b.Passenger)
+                .FirstOrDefaultAsync(b => b.Id == request.BookingId, cancellationToken);
+
+            if (booking == null || booking.Ride == null)
+            {
+                return Result<RideBookingDto>.Failure("Booking not found.");
+            }
+
+            var isPassenger = booking.PassengerId == userId;
+            var isDriver = booking.Ride.DriverId == userId;
+
+            if (!isPassenger && !isDriver)
+            {
+                return Result<RideBookingDto>.Failure("Unauthorized. You must be the passenger or driver of this ride to check in.");
+            }
+
+            if (booking.BookingStatus != BookingStatus.Accepted)
+            {
+                return Result<RideBookingDto>.Failure($"Cannot check in because booking status is {booking.BookingStatus}. It must be Accepted/Confirmed.");
+            }
+
+            booking.BookingStatus = BookingStatus.CheckedIn;
+            booking.CheckedInAt = DateTime.UtcNow;
+            booking.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            if (isPassenger)
+            {
+                await _notificationService.CreateNotificationAsync(
+                    booking.Ride.DriverId,
+                    "📍 Passenger Checked In",
+                    $"{booking.Passenger?.Firstname} checked into your ride {booking.Ride.Origin} → {booking.Ride.Destination}.",
+                    "Booking",
+                    "/my-rides");
+            }
+            else
+            {
+                await _notificationService.CreateNotificationAsync(
+                    booking.PassengerId,
+                    "📍 Checked In to Ride",
+                    $"Driver {booking.Ride.Driver?.Firstname} has checked you into the ride {booking.Ride.Origin} → {booking.Ride.Destination}.",
+                    "Booking",
+                    "/my-bookings");
+            }
+
+            return Result<RideBookingDto>.Success(_mapper.Map<RideBookingDto>(booking), "Checked in successfully.");
+        }
+    }
+
+    // 7. Check-Out Booking Command (Passenger or Driver checks out passenger)
+    public record CheckOutBookingCommand(Guid BookingId) : IRequest<Result<RideBookingDto>>;
+
+    public class CheckOutBookingCommandHandler : IRequestHandler<CheckOutBookingCommand, Result<RideBookingDto>>
+    {
+        private readonly IAppDbContext _context;
+        private readonly ICurrentUserService _currentUserService;
+        private readonly INotificationService _notificationService;
+        private readonly IMapper _mapper;
+
+        public CheckOutBookingCommandHandler(
+            IAppDbContext context,
+            ICurrentUserService currentUserService,
+            INotificationService notificationService,
+            IMapper mapper)
+        {
+            _context = context;
+            _currentUserService = currentUserService;
+            _notificationService = notificationService;
+            _mapper = mapper;
+        }
+
+        public async Task<Result<RideBookingDto>> Handle(CheckOutBookingCommand request, CancellationToken cancellationToken)
+        {
+            var userId = _currentUserService.UserId;
+            var booking = await _context.RideBookings
+                .Include(b => b.Ride)
+                    .ThenInclude(r => r!.Driver)
+                .Include(b => b.Passenger)
+                .FirstOrDefaultAsync(b => b.Id == request.BookingId, cancellationToken);
+
+            if (booking == null || booking.Ride == null)
+            {
+                return Result<RideBookingDto>.Failure("Booking not found.");
+            }
+
+            var isPassenger = booking.PassengerId == userId;
+            var isDriver = booking.Ride.DriverId == userId;
+
+            if (!isPassenger && !isDriver)
+            {
+                return Result<RideBookingDto>.Failure("Unauthorized. You must be the passenger or driver of this ride to check out.");
+            }
+
+            if (booking.BookingStatus != BookingStatus.CheckedIn)
+            {
+                return Result<RideBookingDto>.Failure($"Cannot check out because passenger has not checked in (current status: {booking.BookingStatus}).");
+            }
+
+            booking.BookingStatus = BookingStatus.CheckedOut;
+            booking.CheckedOutAt = DateTime.UtcNow;
+            booking.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            if (isPassenger)
+            {
+                await _notificationService.CreateNotificationAsync(
+                    booking.Ride.DriverId,
+                    "🏁 Passenger Checked Out",
+                    $"{booking.Passenger?.Firstname} arrived at {booking.DropoffLocation} and checked out.",
+                    "Booking",
+                    "/my-rides");
+            }
+            else
+            {
+                await _notificationService.CreateNotificationAsync(
+                    booking.PassengerId,
+                    "🏁 Trip Completed & Checked Out",
+                    $"You arrived at {booking.DropoffLocation} and checked out. Thank you for riding with NextBus!",
+                    "Booking",
+                    "/my-bookings");
+            }
+
+            return Result<RideBookingDto>.Success(_mapper.Map<RideBookingDto>(booking), "Checked out successfully.");
         }
     }
 }
