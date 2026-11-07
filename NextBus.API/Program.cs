@@ -96,4 +96,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// Redirect root to Swagger UI for seamless browser access
+app.MapGet("/", () => Results.Redirect("/index.html"));
+
 await app.RunAsync();
