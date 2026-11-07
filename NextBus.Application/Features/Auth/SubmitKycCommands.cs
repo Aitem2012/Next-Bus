@@ -145,7 +145,9 @@ namespace NextBus.Application.Features.Auth
             }
 
             user.DriverLicenseNumber = request.Dto.DriverLicenseNumber.Trim().ToUpperInvariant();
-            user.DriverLicenseExpiryDate = request.Dto.DriverLicenseExpiryDate;
+            user.DriverLicenseExpiryDate = request.Dto.DriverLicenseExpiryDate.HasValue
+                ? DateTime.SpecifyKind(request.Dto.DriverLicenseExpiryDate.Value, DateTimeKind.Utc)
+                : null;
             user.DriverLicenseDocumentUrl = request.Dto.DriverLicenseDocumentUrl;
             user.DriverKycStatus = DriverKycStatus.Verified;
             user.DriverVerifiedAt = DateTime.UtcNow;

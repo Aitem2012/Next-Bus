@@ -10,6 +10,9 @@ using NextBus.Infrastructure;
 using NextBus.Persistence;
 using NextBus.Persistence.Context;
 
+// Enable Npgsql legacy timestamp behavior to allow writing DateTimes with Kind=Unspecified without exception
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Load local overrides (gitignored) and environment variables
