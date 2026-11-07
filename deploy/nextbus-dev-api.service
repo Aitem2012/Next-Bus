@@ -9,7 +9,7 @@ Restart=always
 RestartSec=5
 KillSignal=SIGINT
 SyslogIdentifier=nextbus-dev-api
-User=www-data
+User=ubuntu
 
 # Environment configuration
 Environment=ASPNETCORE_ENVIRONMENT=Production
