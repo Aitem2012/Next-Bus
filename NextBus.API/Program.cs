@@ -8,6 +8,7 @@ using Microsoft.OpenApi.Models;
 using NextBus.Application;
 using NextBus.Infrastructure;
 using NextBus.Persistence;
+using NextBus.Persistence.Context;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -98,5 +99,20 @@ app.MapControllers();
 
 // Redirect root to Swagger UI for seamless browser access
 app.MapGet("/", () => Results.Redirect("/index.html"));
+
+// Health check endpoint for uptime monitoring and PostgreSQL verification
+app.MapGet("/health", async (AppDbContext dbContext) =>
+{
+    var canConnect = await dbContext.Database.CanConnectAsync();
+    return canConnect
+        ? Results.Ok(new
+        {
+            status = "Healthy",
+            service = "NextBus API (.NET 8)",
+            database = "PostgreSQL (Connected)",
+            timestamp = DateTime.UtcNow
+        })
+        : Results.Problem(detail: "Database connectivity check failed", statusCode: 503);
+}).WithTags("Health");
 
 await app.RunAsync();
