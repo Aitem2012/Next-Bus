@@ -55,10 +55,15 @@ namespace NextBus.Application.Features.Auth
             var roles = await _userManager.GetRolesAsync(user);
             var token = _jwtTokenService.GenerateToken(user, roles);
 
+            var userDto = _mapper.Map<UserDto>(user);
+            userDto.Roles = roles;
+            userDto.IsAdmin = roles.Contains("Admin");
+            userDto.WalletBalance = user.Wallet?.Balance ?? 0m;
+
             return Result<AuthResponseDto>.Success(new AuthResponseDto
             {
                 Token = token,
-                User = _mapper.Map<UserDto>(user)
+                User = userDto
             }, "Login successful.");
         }
     }

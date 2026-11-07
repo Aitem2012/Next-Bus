@@ -6,6 +6,7 @@ using AutoMapper;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using NextBus.Application.Common.Interfaces;
 using NextBus.Application.Common.Models;
 using NextBus.Application.DTOs;
@@ -14,7 +15,7 @@ using NextBus.Domain.Enums;
 
 namespace NextBus.Application.Features.Auth
 {
-    // 1. Submit User KYC (BVN, NIN)
+    // 1. Submit User KYC (BVN / NIN via QoreID)
     public record SubmitUserKycCommand(SubmitKycDto Dto) : IRequest<Result<UserDto>>;
 
     public class SubmitUserKycCommandValidator : AbstractValidator<SubmitUserKycCommand>
@@ -37,15 +38,18 @@ namespace NextBus.Application.Features.Auth
     {
         private readonly UserManager<AppUser> _userManager;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IQoreIdService _qoreIdService;
         private readonly IMapper _mapper;
 
         public SubmitUserKycCommandHandler(
             UserManager<AppUser> userManager,
             ICurrentUserService currentUserService,
+            IQoreIdService qoreIdService,
             IMapper mapper)
         {
             _userManager = userManager;
             _currentUserService = currentUserService;
+            _qoreIdService = qoreIdService;
             _mapper = mapper;
         }
 
@@ -63,30 +67,50 @@ namespace NextBus.Application.Features.Auth
                 return Result<UserDto>.Failure("User not found.");
             }
 
-            user.BVN = request.Dto.BVN;
-            user.NIN = request.Dto.NIN;
-            user.KycStatus = KycStatus.Verified; // Verified upon BVN/NIN validation
+            // Verify with QoreID Identity Service
+            var bvnResult = await _qoreIdService.VerifyBvnAsync(request.Dto.BVN.Trim(), user.Firstname, user.Lastname);
+            if (!bvnResult.Succeeded)
+            {
+                return Result<UserDto>.Failure(bvnResult.Errors);
+            }
+
+            var ninResult = await _qoreIdService.VerifyNinAsync(request.Dto.NIN.Trim(), user.Firstname, user.Lastname);
+            if (!ninResult.Succeeded)
+            {
+                return Result<UserDto>.Failure(ninResult.Errors);
+            }
+
+            user.BVN = request.Dto.BVN.Trim();
+            user.NIN = request.Dto.NIN.Trim();
+            user.KycStatus = KycStatus.Verified; // Verified via QoreID clearance
             user.KycSubmittedAt = DateTime.UtcNow;
             user.KycVerifiedAt = DateTime.UtcNow;
             user.UpdatedAt = DateTime.UtcNow;
 
             await _userManager.UpdateAsync(user);
 
-            return Result<UserDto>.Success(_mapper.Map<UserDto>(user), "KYC verified successfully.");
+            var roles = await _userManager.GetRolesAsync(user);
+            var userDto = _mapper.Map<UserDto>(user);
+            userDto.Roles = roles;
+            userDto.IsAdmin = roles.Contains("Admin");
+
+            return Result<UserDto>.Success(userDto, "Identity verified successfully via QoreID.");
         }
     }
 
-    // 2. Submit Driver License
+    // 2. Submit Driver License (Upload document + Enter License ID number - No QoreID needed)
     public record SubmitDriverLicenseCommand(SubmitDriverLicenseDto Dto) : IRequest<Result<UserDto>>;
 
     public class SubmitDriverLicenseCommandValidator : AbstractValidator<SubmitDriverLicenseCommand>
     {
         public SubmitDriverLicenseCommandValidator()
         {
-            RuleFor(x => x.Dto.DriverLicenseNumber).NotEmpty().WithMessage("Driver's license number is required.");
-            RuleFor(x => x.Dto.DriverLicenseExpiryDate)
-                .GreaterThan(DateTime.UtcNow).WithMessage("Driver's license must not be expired.");
-            RuleFor(x => x.Dto.DriverLicenseDocumentUrl).NotEmpty().WithMessage("Evidence of driving (license document/image) is required.");
+            RuleFor(x => x.Dto.DriverLicenseNumber)
+                .NotEmpty().WithMessage("Driver's license number is required.")
+                .MinimumLength(5).WithMessage("Valid driver's license number must be at least 5 characters.");
+
+            RuleFor(x => x.Dto.DriverLicenseDocumentUrl)
+                .NotEmpty().WithMessage("Please upload a photo/scan of your driver's license document.");
         }
     }
 
@@ -123,13 +147,24 @@ namespace NextBus.Application.Features.Auth
             user.DriverLicenseNumber = request.Dto.DriverLicenseNumber.Trim().ToUpperInvariant();
             user.DriverLicenseExpiryDate = request.Dto.DriverLicenseExpiryDate;
             user.DriverLicenseDocumentUrl = request.Dto.DriverLicenseDocumentUrl;
-            user.DriverKycStatus = DriverKycStatus.Verified; // Approved upon submission of valid license
+            user.DriverKycStatus = DriverKycStatus.Verified;
             user.DriverVerifiedAt = DateTime.UtcNow;
             user.UpdatedAt = DateTime.UtcNow;
 
             await _userManager.UpdateAsync(user);
 
-            return Result<UserDto>.Success(_mapper.Map<UserDto>(user), "Driver license registered and verified successfully. You can now offer rides!");
+            var roles = await _userManager.GetRolesAsync(user);
+            if (!roles.Contains("Driver"))
+            {
+                await _userManager.AddToRoleAsync(user, "Driver");
+                roles.Add("Driver");
+            }
+
+            var userDto = _mapper.Map<UserDto>(user);
+            userDto.Roles = roles;
+            userDto.IsAdmin = roles.Contains("Admin");
+
+            return Result<UserDto>.Success(userDto, "Driver license submitted and verified successfully. You can now register vehicles and offer rides!");
         }
     }
 
@@ -160,14 +195,22 @@ namespace NextBus.Application.Features.Auth
                 return Result<UserDto>.Failure("Unauthorized.");
             }
 
-            var user = await _userManager.FindByIdAsync(userId);
+            var user = await _userManager.Users
+                .Include(u => u.Wallet)
+                .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+
             if (user == null)
             {
                 return Result<UserDto>.Failure("User not found.");
             }
 
-            return Result<UserDto>.Success(_mapper.Map<UserDto>(user));
+            var roles = await _userManager.GetRolesAsync(user);
+            var userDto = _mapper.Map<UserDto>(user);
+            userDto.Roles = roles;
+            userDto.IsAdmin = roles.Contains("Admin");
+            userDto.WalletBalance = user.Wallet?.Balance ?? 0m;
+
+            return Result<UserDto>.Success(userDto);
         }
     }
 }
-

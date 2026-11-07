@@ -37,4 +37,15 @@ namespace NextBus.Application.Common.Interfaces
         Task<Result<PaystackRecipientResponseDto>> CreateTransferRecipientAsync(string accountName, string accountNumber, string bankCode);
         Task<Result<PaystackTransferResponseDto>> InitiateTransferAsync(decimal amount, string recipientCode, string reason, string reference);
     }
+
+    public interface IQoreIdService
+    {
+        Task<Result<bool>> VerifyBvnAsync(string bvn, string firstname, string lastname);
+        Task<Result<bool>> VerifyNinAsync(string nin, string firstname, string lastname);
+    }
+
+    public interface IVehicleOcrService
+    {
+        Task<Result<VehicleOcrResultDto>> ExtractAndVerifyPlateAsync(string frontPhoto, string backPhoto, string submittedPlate);
+    }
 }

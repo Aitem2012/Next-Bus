@@ -17,6 +17,17 @@ namespace NextBus.Domain.Entities
         public int TotalSeats { get; set; }
         public bool IsActive { get; set; } = true;
 
+        // 4-Corner Vehicle Photos for Driver Verification & Safety
+        public string FrontPhotoUrl { get; set; } = string.Empty;       // Front corner showing license plate
+        public string BackPhotoUrl { get; set; } = string.Empty;        // Rear corner showing license plate
+        public string LeftSidePhotoUrl { get; set; } = string.Empty;    // Left side corner
+        public string RightSidePhotoUrl { get; set; } = string.Empty;   // Right side corner
+
+        // Optical Character Recognition (OCR) plate matching
+        public bool OcrPlateVerified { get; set; } = false;
+        public string OcrExtractedPlateNumber { get; set; } = string.Empty;
+        public bool IsApprovedByAdmin { get; set; } = true;
+
         public virtual AppUser? AppUser { get; set; }
         public virtual ICollection<Ride> Rides { get; set; } = new List<Ride>();
     }
