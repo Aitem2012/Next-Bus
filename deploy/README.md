@@ -38,5 +38,12 @@ On every push to `develop`, the workflow [`.github/workflows/next-bus.yml`](../.
 
 To enable HTTPS with Let's Encrypt:
 ```bash
+# 1. Ensure the Nginx virtual host is enabled
+sudo ln -sf /etc/nginx/sites-available/api-dev-nextbus.conf /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+
+# 2. Install certificate (or request new one)
 sudo certbot --nginx -d api-dev-nextbus.u-check.ng
+# If certificate was already downloaded:
+sudo certbot install --cert-name api-dev-nextbus.u-check.ng
 ```
