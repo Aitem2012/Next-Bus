@@ -94,23 +94,32 @@ jobs:
       - name: Trust VPS Host Key
         if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
         run: |
+          VPS_HOST="${{ secrets.VPS_HOST || secrets.DEV_VPS_HOST || secrets.PROD_VPS_HOST || secrets.HOST || secrets.SERVER_HOST }}"
+          if [[ -z "$VPS_HOST" ]]; then
+            VPS_HOST="api-dev-nextbus.u-check.ng"
+          fi
+          echo "Connecting to VPS host: ${VPS_HOST}"
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H "${VPS_HOST}" >> ~/.ssh/known_hosts
 
       - name: Prepare VPS Application Directory
         if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
         run: |
           DEPLOY_USER="${{ secrets.VPS_USER }}"
           if [[ -z "$DEPLOY_USER" || "$DEPLOY_USER" == "root" ]]; then
-            DEPLOY_USER="deploy"
+            DEPLOY_USER="ubuntu"
           fi
-          VPS_HOST="${{ secrets.VPS_HOST }}"
+          VPS_HOST="${{ secrets.VPS_HOST || secrets.DEV_VPS_HOST || secrets.PROD_VPS_HOST || secrets.HOST || secrets.SERVER_HOST }}"
+          if [[ -z "$VPS_HOST" ]]; then
+            VPS_HOST="api-dev-nextbus.u-check.ng"
+          fi
           TARGET_PATH="/var/www/nextbus-dev-api"
           SERVICE_NAME="nextbus-dev-api"
 
           echo "Preparing VPS environment on ${DEPLOY_USER}@${VPS_HOST}:${TARGET_PATH}..."
           ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${VPS_HOST} "
-            sudo mkdir -p ${TARGET_PATH} /etc/nextbus-api
+            sudo mkdir -p ${TARGET_PATH} /etc/nextbus-api /var/www/.dotnet
+            sudo chown -R www-data:www-data /var/www/.dotnet 2>/dev/null || true
             sudo chown -R ${DEPLOY_USER}:${DEPLOY_USER} ${TARGET_PATH}
             sudo systemctl stop ${SERVICE_NAME} 2>/dev/null || true
           "
@@ -120,12 +129,15 @@ jobs:
         run: |
           DEPLOY_USER="${{ secrets.VPS_USER }}"
           if [[ -z "$DEPLOY_USER" || "$DEPLOY_USER" == "root" ]]; then
-            DEPLOY_USER="deploy"
+            DEPLOY_USER="ubuntu"
           fi
-          VPS_HOST="${{ secrets.VPS_HOST }}"
+          VPS_HOST="${{ secrets.VPS_HOST || secrets.DEV_VPS_HOST || secrets.PROD_VPS_HOST || secrets.HOST || secrets.SERVER_HOST }}"
+          if [[ -z "$VPS_HOST" ]]; then
+            VPS_HOST="api-dev-nextbus.u-check.ng"
+          fi
           TARGET_PATH="/var/www/nextbus-dev-api"
 
-          echo "Syncing build artifacts to ${TARGET_PATH}..."
+          echo "Syncing build artifacts to ${DEPLOY_USER}@${VPS_HOST}:${TARGET_PATH}..."
           rsync -avz --delete --exclude 'appsettings.Local.json' publish_output/ ${DEPLOY_USER}@${VPS_HOST}:${TARGET_PATH}/
 
       - name: Configure Systemd and Nginx on VPS
@@ -133,9 +145,12 @@ jobs:
         run: |
           DEPLOY_USER="${{ secrets.VPS_USER }}"
           if [[ -z "$DEPLOY_USER" || "$DEPLOY_USER" == "root" ]]; then
-            DEPLOY_USER="deploy"
+            DEPLOY_USER="ubuntu"
           fi
-          VPS_HOST="${{ secrets.VPS_HOST }}"
+          VPS_HOST="${{ secrets.VPS_HOST || secrets.DEV_VPS_HOST || secrets.PROD_VPS_HOST || secrets.HOST || secrets.SERVER_HOST }}"
+          if [[ -z "$VPS_HOST" ]]; then
+            VPS_HOST="api-dev-nextbus.u-check.ng"
+          fi
           TARGET_PATH="/var/www/nextbus-dev-api"
           SERVICE_NAME="nextbus-dev-api"
 
@@ -164,7 +179,7 @@ jobs:
           ASPNETCORE_ENVIRONMENT=Production
           ASPNETCORE_URLS=http://127.0.0.1:5070
           ENV_EOF
-              sudo chmod 600 /etc/nextbus-api/nextbus-dev-api.env
+              sudo chmod 644 /etc/nextbus-api/nextbus-dev-api.env
             fi
           "
 
@@ -172,6 +187,8 @@ jobs:
           ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${VPS_HOST} "
             sudo chown -R ${DEPLOY_USER}:www-data ${TARGET_PATH}
             sudo chmod -R 755 ${TARGET_PATH}
+            sudo mkdir -p /var/www/.dotnet
+            sudo chown -R www-data:www-data /var/www/.dotnet 2>/dev/null || true
             sudo systemctl daemon-reload
             sudo systemctl enable ${SERVICE_NAME}
             sudo systemctl restart ${SERVICE_NAME}
