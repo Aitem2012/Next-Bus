@@ -9,11 +9,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NextBus.Domain", "NextBus.D
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NextBus.Persistence", "NextBus.Persistence\NextBus.Persistence.csproj", "{10C43915-98BA-4C71-93C8-F68093F74DAF}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NextBus.Presentation", "NextBus.Presentation\NextBus.Presentation.csproj", "{85DC6D46-DBF5-4276-B3FE-DE4865FE68EB}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NextBus.Application", "NextBus.Application\NextBus.Application.csproj", "{A2CC70A4-EC78-40B8-8FED-CC33AD497B88}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NextBus.Common", "NextBus.Common\NextBus.Common.csproj", "{0251BDB7-D602-4B9F-9382-44B83A17D0B7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NextBus.Infrastructure", "NextBus.Infrastructure\NextBus.Infrastructure.csproj", "{5BA05FA9-6CAE-4B21-AA83-B4DF71B4D9D3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NextBus.Tests", "NextBus.Tests\NextBus.Tests.csproj", "{8550A2BE-FFD6-47BB-9AF4-3ED98104FB4B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,18 +33,18 @@ Global
 		{10C43915-98BA-4C71-93C8-F68093F74DAF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{10C43915-98BA-4C71-93C8-F68093F74DAF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{10C43915-98BA-4C71-93C8-F68093F74DAF}.Release|Any CPU.Build.0 = Release|Any CPU
-		{85DC6D46-DBF5-4276-B3FE-DE4865FE68EB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{85DC6D46-DBF5-4276-B3FE-DE4865FE68EB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{85DC6D46-DBF5-4276-B3FE-DE4865FE68EB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{85DC6D46-DBF5-4276-B3FE-DE4865FE68EB}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A2CC70A4-EC78-40B8-8FED-CC33AD497B88}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A2CC70A4-EC78-40B8-8FED-CC33AD497B88}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A2CC70A4-EC78-40B8-8FED-CC33AD497B88}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A2CC70A4-EC78-40B8-8FED-CC33AD497B88}.Release|Any CPU.Build.0 = Release|Any CPU
-		{0251BDB7-D602-4B9F-9382-44B83A17D0B7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{0251BDB7-D602-4B9F-9382-44B83A17D0B7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{0251BDB7-D602-4B9F-9382-44B83A17D0B7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{0251BDB7-D602-4B9F-9382-44B83A17D0B7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5BA05FA9-6CAE-4B21-AA83-B4DF71B4D9D3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5BA05FA9-6CAE-4B21-AA83-B4DF71B4D9D3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5BA05FA9-6CAE-4B21-AA83-B4DF71B4D9D3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5BA05FA9-6CAE-4B21-AA83-B4DF71B4D9D3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8550A2BE-FFD6-47BB-9AF4-3ED98104FB4B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8550A2BE-FFD6-47BB-9AF4-3ED98104FB4B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8550A2BE-FFD6-47BB-9AF4-3ED98104FB4B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8550A2BE-FFD6-47BB-9AF4-3ED98104FB4B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

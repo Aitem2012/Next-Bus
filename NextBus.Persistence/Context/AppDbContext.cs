@@ -1,111 +1,115 @@
-﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore;
-using NextBus.Application.Interfaces.Persistence;
-using NextBus.Domain.Buses;
-using NextBus.Domain.Drivers;
-using NextBus.Domain.Users;
-using NextBus.Domain.Wallets;
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
-using NextBus.Domain.Transactions;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using NextBus.Application.Common.Interfaces;
+using NextBus.Domain.Entities;
 
 namespace NextBus.Persistence.Context
 {
     public class AppDbContext : IdentityDbContext<AppUser>, IAppDbContext
     {
-        public AppDbContext()
-        {
-            
-        }
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
         }
 
-        public static AppDbContext Create()
-        {
-            return new AppDbContext();
-        }
+        public DbSet<Vehicle> Vehicles => Set<Vehicle>();
+        public DbSet<Ride> Rides => Set<Ride>();
+        public DbSet<RideBooking> RideBookings => Set<RideBooking>();
+        public DbSet<Wallet> Wallets => Set<Wallet>();
+        public DbSet<WalletHistory> WalletHistories => Set<WalletHistory>();
+        public DbSet<Transaction> Transactions => Set<Transaction>();
 
-        public DbSet<AppUser> AppUsers { get; set; }
-        public DbSet<Bus> Buses { get; set; }
-        public DbSet<Driver> Drivers { get; set; }
-        public DbSet<Transaction> Transactions { get; set; }
-        public DbSet<Wallet> Wallets { get; set; }
-        public DbSet<WalletHistory> WalletHistories { get; set; }
-
-        public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
+        protected override void OnModelCreating(ModelBuilder builder)
         {
-            var result = await base.SaveChangesAsync(cancellationToken);
-            return result;
-        }
+            base.OnModelCreating(builder);
 
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            base.OnModelCreating(modelBuilder);
-            //base.OnModelCreating(modelBuilder);
-            modelBuilder.Entity<Driver>(x => x.HasKey(a => a.AppUserId));
-            
-        }
-
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-            
-        }
-
-        public class IdentityUserLoginEntityTypesConfiguration : IEntityTypeConfiguration<IdentityUserLogin<string>>
-        {
-            public void Configure(EntityTypeBuilder<IdentityUserLogin<string>> builder)
+            // User configuration
+            builder.Entity<AppUser>(b =>
             {
-                builder.ToTable("AspNetUserLogin");
-                builder.HasKey(i => i.UserId);
-            }
-        }
+                b.HasOne(u => u.Wallet)
+                    .WithOne(w => w.AppUser)
+                    .HasForeignKey<Wallet>(w => w.AppUserId)
+                    .OnDelete(DeleteBehavior.Cascade);
 
-        public class IdentityUserRoleEntityTypesConfiguration : IEntityTypeConfiguration<IdentityUserRole<string>>
-        {
-            public void Configure(EntityTypeBuilder<IdentityUserRole<string>> builder)
-            {
-                builder.ToTable("AspNetUserRole");
-                builder.HasKey(i => new { i.RoleId, i.UserId });
-            }
-        }
+                b.HasMany(u => u.Vehicles)
+                    .WithOne(v => v.AppUser)
+                    .HasForeignKey(v => v.AppUserId)
+                    .OnDelete(DeleteBehavior.Cascade);
 
-        public class IdentityRoleEntityTypesConfiguration : IEntityTypeConfiguration<IdentityRole<string>>
-        {
-            public void Configure(EntityTypeBuilder<IdentityRole<string>> builder)
-            {
-                builder.ToTable("AspNetRole");
-                builder.HasKey(i => i.Id);
-            }
-        }
+                b.HasMany(u => u.OfferedRides)
+                    .WithOne(r => r.Driver)
+                    .HasForeignKey(r => r.DriverId)
+                    .OnDelete(DeleteBehavior.Restrict);
 
-        public class IdentityRoleClaimEntityTypesConfiguration : IEntityTypeConfiguration<IdentityRoleClaim<string>>
-        {
-            public void Configure(EntityTypeBuilder<IdentityRoleClaim<string>> builder)
-            {
-                builder.ToTable("AspNetRoleClaim");
-                builder.HasKey(i => i.Id);
-            }
-        }
+                b.HasMany(u => u.Bookings)
+                    .WithOne(b => b.Passenger)
+                    .HasForeignKey(b => b.PassengerId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
 
-        public class IdentityUserClaimEntityTypesConfiguration : IEntityTypeConfiguration<IdentityUserClaim<string>>
-        {
-            public void Configure(EntityTypeBuilder<IdentityUserClaim<string>> builder)
+            // Vehicle configuration
+            builder.Entity<Vehicle>(b =>
             {
-                builder.ToTable("AspNetUserClaim");
-                builder.HasKey(i => i.Id);
-            }
-        }
+                b.HasKey(v => v.Id);
+                b.HasIndex(v => v.PlateNumber).IsUnique();
+            });
 
-        public class IdentityUserTokenEntityTypesConfiguration : IEntityTypeConfiguration<IdentityUserToken<string>>
-        {
-            public void Configure(EntityTypeBuilder<IdentityUserToken<string>> builder)
+            // Ride configuration
+            builder.Entity<Ride>(b =>
             {
-                builder.ToTable("AspNetUserToken");
-                builder.HasKey(i => i.UserId);
-            }
+                b.HasKey(r => r.Id);
+                b.Property(r => r.PricePerSeat).HasPrecision(18, 2);
+
+                b.HasOne(r => r.Vehicle)
+                    .WithMany(v => v.Rides)
+                    .HasForeignKey(r => r.VehicleId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                b.HasMany(r => r.Bookings)
+                    .WithOne(b => b.Ride)
+                    .HasForeignKey(b => b.RideId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // RideBooking configuration
+            builder.Entity<RideBooking>(b =>
+            {
+                b.HasKey(rb => rb.Id);
+                b.Property(rb => rb.PricePerSeat).HasPrecision(18, 2);
+                b.Property(rb => rb.TotalFare).HasPrecision(18, 2);
+            });
+
+            // Wallet configuration
+            builder.Entity<Wallet>(b =>
+            {
+                b.HasKey(w => w.Id);
+                b.Property(w => w.Balance).HasPrecision(18, 2);
+
+                b.HasMany(w => w.Histories)
+                    .WithOne(h => h.Wallet)
+                    .HasForeignKey(h => h.WalletId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // WalletHistory configuration
+            builder.Entity<WalletHistory>(b =>
+            {
+                b.HasKey(wh => wh.Id);
+                b.Property(wh => wh.Amount).HasPrecision(18, 2);
+            });
+
+            // Transaction configuration
+            builder.Entity<Transaction>(b =>
+            {
+                b.HasKey(t => t.Id);
+                b.Property(t => t.Amount).HasPrecision(18, 2);
+
+                b.HasOne(t => t.AppUser)
+                    .WithMany(u => u.Transactions)
+                    .HasForeignKey(t => t.AppUserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
         }
     }
 }
