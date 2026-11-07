@@ -62,7 +62,9 @@ namespace NextBus.Application.Features.Wallets
             }
 
             var reference = "NXBS_TOP_".GenerateRef();
-            var callbackUrl = request.Dto.CallbackUrl ?? "https://nextbus.app/payment/verify";
+            var callbackUrl = !string.IsNullOrWhiteSpace(request.Dto.CallbackUrl)
+                ? request.Dto.CallbackUrl
+                : "https://dev-nextbus.u-check.ng/wallet";
 
             return await _paystackService.InitializePaymentAsync(user.Email!, request.Dto.Amount, reference, callbackUrl);
         }
