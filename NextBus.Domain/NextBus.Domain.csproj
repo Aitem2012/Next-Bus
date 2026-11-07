@@ -4,11 +4,6 @@
     <TargetFramework>net5.0</TargetFramework>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Compile Remove="Buses\ Drivers\**" />
-    <EmbeddedResource Remove="Buses\ Drivers\**" />
-    <None Remove="Buses\ Drivers\**" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="MediatR.Extensions.Microsoft.DependencyInjection" Version="9.0.0" />
