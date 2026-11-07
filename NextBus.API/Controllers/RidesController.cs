@@ -49,12 +49,32 @@ namespace NextBus.API.Controllers
         }
 
         [Authorize]
+        [HttpPost("{id:guid}/start")]
+        [ProducesResponseType(typeof(Result), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(Result), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> StartRide(Guid id)
+        {
+            var result = await Mediator.Send(new StartRideCommand(id));
+            return HandleResult(result);
+        }
+
+        [Authorize]
         [HttpPost("{id:guid}/complete")]
         [ProducesResponseType(typeof(Result), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(Result), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> CompleteRide(Guid id)
         {
             var result = await Mediator.Send(new CompleteRideCommand(id));
+            return HandleResult(result);
+        }
+
+        [Authorize]
+        [HttpPost("{id:guid}/cancel")]
+        [ProducesResponseType(typeof(Result), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(Result), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> CancelRide(Guid id)
+        {
+            var result = await Mediator.Send(new CancelRideCommand(id));
             return HandleResult(result);
         }
     }

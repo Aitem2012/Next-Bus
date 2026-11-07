@@ -16,3 +16,4 @@ namespace NextBus.Domain.Entities
         public virtual Wallet? Wallet { get; set; }
     }
 }
+

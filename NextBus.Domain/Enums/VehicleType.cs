@@ -8,3 +8,4 @@ namespace NextBus.Domain.Enums
         Minivan = 4
     }
 }
+

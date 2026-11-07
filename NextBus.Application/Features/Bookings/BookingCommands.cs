@@ -242,7 +242,79 @@ namespace NextBus.Application.Features.Bookings
         }
     }
 
-    // 3. Get My Bookings (Passenger)
+    // 3. Cancel Booking (Passenger cancels their booking)
+    public record CancelBookingCommand(Guid BookingId) : IRequest<Result>;
+
+    public class CancelBookingCommandHandler : IRequestHandler<CancelBookingCommand, Result>
+    {
+        private readonly IAppDbContext _context;
+        private readonly ICurrentUserService _currentUserService;
+
+        public CancelBookingCommandHandler(IAppDbContext context, ICurrentUserService currentUserService)
+        {
+            _context = context;
+            _currentUserService = currentUserService;
+        }
+
+        public async Task<Result> Handle(CancelBookingCommand request, CancellationToken cancellationToken)
+        {
+            var userId = _currentUserService.UserId;
+            var booking = await _context.RideBookings
+                .Include(b => b.Ride)
+                .FirstOrDefaultAsync(b => b.Id == request.BookingId && b.PassengerId == userId, cancellationToken);
+
+            if (booking == null)
+            {
+                return Result.Failure("Booking not found or does not belong to you.");
+            }
+
+            if (booking.BookingStatus == BookingStatus.Completed || booking.BookingStatus == BookingStatus.Cancelled)
+            {
+                return Result.Failure($"Booking is already {booking.BookingStatus}.");
+            }
+
+            // If it was accepted, restore the seats on the ride
+            if (booking.BookingStatus == BookingStatus.Accepted && booking.Ride != null)
+            {
+                booking.Ride.AvailableSeats += booking.SeatsBooked;
+            }
+
+            // Refund passenger if paid
+            if (booking.PaymentStatus == PaymentStatus.Paid)
+            {
+                var passengerWallet = await _context.Wallets
+                    .SingleOrDefaultAsync(w => w.AppUserId == userId, cancellationToken);
+
+                if (passengerWallet != null)
+                {
+                    passengerWallet.Balance += booking.TotalFare;
+                    passengerWallet.LastUpdated = DateTime.UtcNow;
+
+                    var refundHistory = new WalletHistory
+                    {
+                        WalletId = passengerWallet.Id,
+                        AppUserId = userId!,
+                        Amount = booking.TotalFare,
+                        Type = "Refund",
+                        Reference = "RFND".GenerateRef(),
+                        Details = $"Refund for cancelled booking on ride {booking.Ride?.Origin} -> {booking.Ride?.Destination}",
+                        Date = DateTime.UtcNow
+                    };
+                    await _context.WalletHistories.AddAsync(refundHistory, cancellationToken);
+                }
+
+                booking.PaymentStatus = PaymentStatus.Refunded;
+            }
+
+            booking.BookingStatus = BookingStatus.Cancelled;
+            booking.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync(cancellationToken);
+            return Result.Success("Booking cancelled and fare refunded to your wallet.");
+        }
+    }
+
+    // 4. Get My Bookings (Passenger)
     public record GetMyBookingsQuery : IRequest<Result<List<RideBookingDto>>>;
 
     public class GetMyBookingsQueryHandler : IRequestHandler<GetMyBookingsQuery, Result<List<RideBookingDto>>>
@@ -280,7 +352,7 @@ namespace NextBus.Application.Features.Bookings
         }
     }
 
-    // 4. Get Ride Bookings (Driver views requests for their ride)
+    // 5. Get Ride Bookings (Driver views requests for their ride)
     public record GetRideBookingsQuery(Guid RideId) : IRequest<Result<List<RideBookingDto>>>;
 
     public class GetRideBookingsQueryHandler : IRequestHandler<GetRideBookingsQuery, Result<List<RideBookingDto>>>

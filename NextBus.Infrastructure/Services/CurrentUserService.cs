@@ -17,3 +17,4 @@ namespace NextBus.Infrastructure.Services
             _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
     }
 }
+

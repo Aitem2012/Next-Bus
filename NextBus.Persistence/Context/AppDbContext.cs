@@ -1,4 +1,4 @@
-﻿using System.Threading;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +19,7 @@ namespace NextBus.Persistence.Context
         public DbSet<Wallet> Wallets => Set<Wallet>();
         public DbSet<WalletHistory> WalletHistories => Set<WalletHistory>();
         public DbSet<Transaction> Transactions => Set<Transaction>();
+        public DbSet<OtpVerification> OtpVerifications => Set<OtpVerification>();
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -78,6 +79,8 @@ namespace NextBus.Persistence.Context
                 b.HasKey(rb => rb.Id);
                 b.Property(rb => rb.PricePerSeat).HasPrecision(18, 2);
                 b.Property(rb => rb.TotalFare).HasPrecision(18, 2);
+                b.Property(rb => rb.CommissionAmount).HasPrecision(18, 2);
+                b.Property(rb => rb.DriverEarnings).HasPrecision(18, 2);
             });
 
             // Wallet configuration
@@ -109,6 +112,13 @@ namespace NextBus.Persistence.Context
                     .WithMany(u => u.Transactions)
                     .HasForeignKey(t => t.AppUserId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // OtpVerification configuration
+            builder.Entity<OtpVerification>(b =>
+            {
+                b.HasKey(o => o.Id);
+                b.HasIndex(o => new { o.Email, o.Purpose });
             });
         }
     }

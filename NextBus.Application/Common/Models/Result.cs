@@ -25,3 +25,4 @@ namespace NextBus.Application.Common.Models
         public static Result<T> Failure(IEnumerable<string> errors) => new() { Succeeded = false, Errors = [.. errors] };
     }
 }
+

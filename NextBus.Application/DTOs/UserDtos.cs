@@ -57,3 +57,4 @@ namespace NextBus.Application.DTOs
         public string DriverLicenseDocumentUrl { get; set; } = string.Empty;
     }
 }
+

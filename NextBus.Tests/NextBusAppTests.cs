@@ -6,14 +6,20 @@ using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Moq;
 using NextBus.Application.Common.Interfaces;
 using NextBus.Application.Common.Mappings;
+using NextBus.Application.Common.Models;
 using NextBus.Application.DTOs;
+using NextBus.Application.Features.Auth;
 using NextBus.Application.Features.Bookings;
 using NextBus.Application.Features.Rides;
+using NextBus.Application.Features.Wallets;
 using NextBus.Domain.Entities;
 using NextBus.Domain.Enums;
+using NextBus.Infrastructure.Services;
 using NextBus.Persistence.Context;
 using Xunit;
 
@@ -254,6 +260,363 @@ namespace NextBus.Tests
             Assert.True(respondResult.Succeeded);
             var updatedRide = await context.Rides.FindAsync(ride.Id);
             Assert.Equal(2, updatedRide!.AvailableSeats); // 3 - 1 = 2 seats remaining
+        }
+
+        [Fact]
+        public async Task EmailVerificationOtp_Flow_WorksCorrectly()
+        {
+            using var context = CreateInMemoryDbContext();
+
+            var emailServiceMock = new Mock<IEmailService>();
+            var otpService = new OtpService(context, emailServiceMock.Object);
+
+            var user = new AppUser
+            {
+                Id = "user-otp-1",
+                UserName = "newuser@test.com",
+                Email = "newuser@test.com",
+                Firstname = "John",
+                Lastname = "Doe",
+                EmailConfirmed = false
+            };
+            await context.Users.AddAsync(user);
+            await context.SaveChangesAsync();
+
+            // 1. Generate OTP
+            var generatedOtp = await otpService.GenerateAndSendOtpAsync(user.Email, user.Id, OtpPurpose.EmailVerification);
+            Assert.Equal(6, generatedOtp.Length);
+
+            // 2. Setup UserManager mock
+            var userStoreMock = new Mock<IUserStore<AppUser>>();
+            var userManagerMock = new Mock<UserManager<AppUser>>(userStoreMock.Object, null!, null!, null!, null!, null!, null!, null!, null!);
+            userManagerMock.Setup(u => u.FindByEmailAsync(user.Email)).ReturnsAsync(user);
+            userManagerMock.Setup(u => u.GetRolesAsync(user)).ReturnsAsync(new List<string> { "User" });
+            userManagerMock.Setup(u => u.UpdateAsync(user)).ReturnsAsync(IdentityResult.Success);
+
+            var jwtMock = new Mock<IJwtTokenService>();
+            jwtMock.Setup(j => j.GenerateToken(It.IsAny<AppUser>(), It.IsAny<IList<string>>())).Returns("mock_jwt_token");
+
+            var verifyHandler = new VerifyEmailOtpCommandHandler(userManagerMock.Object, otpService, jwtMock.Object, _mapper);
+
+            // Invalid OTP should fail
+            var invalidResult = await verifyHandler.Handle(new VerifyEmailOtpCommand(new VerifyEmailOtpDto
+            {
+                Email = user.Email,
+                OtpCode = "000000"
+            }), CancellationToken.None);
+
+            Assert.False(invalidResult.Succeeded);
+            Assert.False(user.EmailConfirmed);
+
+            // Valid OTP should succeed
+            var validResult = await verifyHandler.Handle(new VerifyEmailOtpCommand(new VerifyEmailOtpDto
+            {
+                Email = user.Email,
+                OtpCode = generatedOtp
+            }), CancellationToken.None);
+
+            Assert.True(validResult.Succeeded);
+            Assert.True(user.EmailConfirmed);
+            Assert.Equal("mock_jwt_token", validResult.Data!.Token);
+        }
+
+        [Fact]
+        public async Task PasswordResetOtp_Flow_WorksCorrectly()
+        {
+            using var context = CreateInMemoryDbContext();
+
+            var emailServiceMock = new Mock<IEmailService>();
+            var otpService = new OtpService(context, emailServiceMock.Object);
+
+            var user = new AppUser
+            {
+                Id = "user-pwd-1",
+                UserName = "resetme@test.com",
+                Email = "resetme@test.com",
+                Firstname = "Jane",
+                Lastname = "Smith"
+            };
+            await context.Users.AddAsync(user);
+            await context.SaveChangesAsync();
+
+            var userStoreMock = new Mock<IUserStore<AppUser>>();
+            var userManagerMock = new Mock<UserManager<AppUser>>(userStoreMock.Object, null!, null!, null!, null!, null!, null!, null!, null!);
+            userManagerMock.Setup(u => u.FindByEmailAsync(user.Email)).ReturnsAsync(user);
+            userManagerMock.Setup(u => u.GeneratePasswordResetTokenAsync(user)).ReturnsAsync("token_123");
+            userManagerMock.Setup(u => u.ResetPasswordAsync(user, "token_123", "NewSecret123!")).ReturnsAsync(IdentityResult.Success);
+
+            // 1. Request Password Reset OTP
+            var requestHandler = new RequestPasswordResetOtpCommandHandler(userManagerMock.Object, otpService);
+            var reqResult = await requestHandler.Handle(new RequestPasswordResetOtpCommand(new RequestPasswordResetDto
+            {
+                Email = user.Email
+            }), CancellationToken.None);
+
+            Assert.True(reqResult.Succeeded);
+
+            // Find generated OTP in DB
+            var dbOtp = await context.OtpVerifications.FirstAsync(o => o.Email == user.Email && o.Purpose == OtpPurpose.PasswordReset);
+
+            // 2. Reset Password with OTP
+            var resetHandler = new ResetPasswordWithOtpCommandHandler(userManagerMock.Object, otpService);
+            var resetResult = await resetHandler.Handle(new ResetPasswordWithOtpCommand(new ResetPasswordWithOtpDto
+            {
+                Email = user.Email,
+                OtpCode = dbOtp.Code,
+                NewPassword = "NewSecret123!"
+            }), CancellationToken.None);
+
+            Assert.True(resetResult.Succeeded);
+
+            // OTP should now be marked as used
+            var usedOtp = await context.OtpVerifications.FindAsync(dbOtp.Id);
+            Assert.True(usedOtp!.IsUsed);
+        }
+
+        [Fact]
+        public async Task PaystackWalletFunding_AndWithdrawalWithOtp_WorksCorrectly()
+        {
+            using var context = CreateInMemoryDbContext();
+
+            var user = new AppUser
+            {
+                Id = "user-wallet-1",
+                UserName = "walletuser@test.com",
+                Email = "walletuser@test.com",
+                Firstname = "Femi",
+                Lastname = "Adekunle"
+            };
+            var wallet = new Wallet
+            {
+                Id = Guid.NewGuid(),
+                AppUserId = user.Id,
+                Balance = 0m,
+                Reference = "W_FEMI"
+            };
+            await context.Users.AddAsync(user);
+            await context.Wallets.AddAsync(wallet);
+            await context.SaveChangesAsync();
+
+            var userStoreMock = new Mock<IUserStore<AppUser>>();
+            var userManagerMock = new Mock<UserManager<AppUser>>(userStoreMock.Object, null!, null!, null!, null!, null!, null!, null!, null!);
+            userManagerMock.Setup(u => u.FindByIdAsync(user.Id)).ReturnsAsync(user);
+
+            var currentUserServiceMock = new Mock<ICurrentUserService>();
+            currentUserServiceMock.Setup(c => c.UserId).Returns(user.Id);
+
+            var paystackMock = new Mock<IPaystackService>();
+            var emailServiceMock = new Mock<IEmailService>();
+            var otpService = new OtpService(context, emailServiceMock.Object);
+
+            // 1. Paystack Top-Up Verification
+            var topUpReference = "PAY_REF_1001";
+            paystackMock.Setup(p => p.VerifyPaymentAsync(topUpReference)).ReturnsAsync(Result<PaystackVerifyResponseDto>.Success(new PaystackVerifyResponseDto
+            {
+                IsSuccessful = true,
+                Amount = 10000m,
+                Reference = topUpReference,
+                Channel = "card",
+                Currency = "NGN",
+                CustomerEmail = user.Email
+            }));
+
+            var verifyTopUpHandler = new VerifyPaystackTopUpCommandHandler(context, currentUserServiceMock.Object, paystackMock.Object, _mapper);
+            var topUpResult = await verifyTopUpHandler.Handle(new VerifyPaystackTopUpCommand(new VerifyFundWalletDto
+            {
+                Reference = topUpReference
+            }), CancellationToken.None);
+
+            Assert.True(topUpResult.Succeeded);
+            Assert.Equal(10000m, wallet.Balance);
+
+            // Verify idempotency (prevent double credit)
+            var doubleCreditResult = await verifyTopUpHandler.Handle(new VerifyPaystackTopUpCommand(new VerifyFundWalletDto
+            {
+                Reference = topUpReference
+            }), CancellationToken.None);
+
+            Assert.True(doubleCreditResult.Succeeded);
+            Assert.Equal(10000m, wallet.Balance); // Balance remains 10000m
+
+            // 2. Withdrawal Step 1: Request OTP with Destination Account
+            paystackMock.Setup(p => p.ResolveAccountNumberAsync("0123456789", "058"))
+                .ReturnsAsync(Result<PaystackResolveAccountDto>.Success(new PaystackResolveAccountDto
+                {
+                    AccountNumber = "0123456789",
+                    AccountName = "FEMI ADEKUNLE",
+                    BankId = 9
+                }));
+
+            var requestWithdrawalHandler = new RequestWithdrawalOtpCommandHandler(
+                context, currentUserServiceMock.Object, userManagerMock.Object, paystackMock.Object, otpService);
+
+            var wdrwReqResult = await requestWithdrawalHandler.Handle(new RequestWithdrawalOtpCommand(new RequestWithdrawalDto
+            {
+                Amount = 4000m,
+                AccountNumber = "0123456789",
+                BankCode = "058",
+                AccountName = "FEMI ADEKUNLE"
+            }), CancellationToken.None);
+
+            Assert.True(wdrwReqResult.Succeeded);
+            Assert.Contains("FEMI ADEKUNLE", wdrwReqResult.Message!);
+
+            var withdrawalOtp = await context.OtpVerifications.FirstAsync(o => o.Email == user.Email && o.Purpose == OtpPurpose.Withdrawal);
+
+            // 3. Withdrawal Step 2: Confirm OTP
+            paystackMock.Setup(p => p.CreateTransferRecipientAsync("FEMI ADEKUNLE", "0123456789", "058"))
+                .ReturnsAsync(Result<PaystackRecipientResponseDto>.Success(new PaystackRecipientResponseDto
+                {
+                    RecipientCode = "RCP_test_123",
+                    Name = "FEMI ADEKUNLE"
+                }));
+
+            paystackMock.Setup(p => p.InitiateTransferAsync(4000m, "RCP_test_123", "NextBus Wallet Withdrawal", It.IsAny<string>()))
+                .ReturnsAsync(Result<PaystackTransferResponseDto>.Success(new PaystackTransferResponseDto
+                {
+                    TransferCode = "TRF_999",
+                    Status = "success"
+                }));
+
+            var confirmWithdrawalHandler = new ConfirmWithdrawalCommandHandler(
+                context, currentUserServiceMock.Object, userManagerMock.Object, paystackMock.Object, otpService, _mapper);
+
+            var confirmResult = await confirmWithdrawalHandler.Handle(new ConfirmWithdrawalCommand(new ConfirmWithdrawalDto
+            {
+                OtpCode = withdrawalOtp.Code
+            }), CancellationToken.None);
+
+            Assert.True(confirmResult.Succeeded);
+            Assert.Equal(6000m, wallet.Balance); // 10000 - 4000 = 6000
+
+            var withdrawalTx = await context.Transactions.FirstOrDefaultAsync(t => t.Type == TransactionType.Withdrawal);
+            Assert.NotNull(withdrawalTx);
+            Assert.Equal(4000m, withdrawalTx.Amount);
+        }
+
+        [Fact]
+        public async Task CompleteRide_DeductsPlatformCommission_ForEachPassenger()
+        {
+            using var context = CreateInMemoryDbContext();
+
+            var driver = new AppUser
+            {
+                Id = "driver-comm",
+                Firstname = "Babatunde",
+                Lastname = "Raji",
+                Email = "babatunde@test.com"
+            };
+            var driverWallet = new Wallet
+            {
+                Id = Guid.NewGuid(),
+                AppUserId = driver.Id,
+                Balance = 0m,
+                Reference = "W_DRIVER"
+            };
+
+            var passenger1 = new AppUser { Id = "p-1", Firstname = "P1", Lastname = "One", Email = "p1@test.com" };
+            var passenger2 = new AppUser { Id = "p-2", Firstname = "P2", Lastname = "Two", Email = "p2@test.com" };
+
+            var vehicle = new Vehicle
+            {
+                Id = Guid.NewGuid(),
+                AppUserId = driver.Id,
+                Make = "Toyota",
+                Model = "HiAce",
+                PlateNumber = "EPE-999-LK",
+                TotalSeats = 14
+            };
+
+            var ride = new Ride
+            {
+                Id = Guid.NewGuid(),
+                DriverId = driver.Id,
+                VehicleId = vehicle.Id,
+                Origin = "Oshodi",
+                Destination = "Ajah",
+                DepartureTime = DateTime.UtcNow.AddMinutes(10),
+                TotalSeatsOffered = 10,
+                AvailableSeats = 7,
+                PricePerSeat = 1000m,
+                Status = RideStatus.InProgress
+            };
+
+            // Passenger 1 booked 1 seat = 1000 NGN
+            var booking1 = new RideBooking
+            {
+                Id = Guid.NewGuid(),
+                RideId = ride.Id,
+                PassengerId = passenger1.Id,
+                PickupLocation = "Oshodi",
+                DropoffLocation = "Ajah",
+                SeatsBooked = 1,
+                PricePerSeat = 1000m,
+                TotalFare = 1000m,
+                BookingStatus = BookingStatus.Accepted,
+                PaymentStatus = PaymentStatus.Paid
+            };
+
+            // Passenger 2 booked 2 seats = 2000 NGN
+            var booking2 = new RideBooking
+            {
+                Id = Guid.NewGuid(),
+                RideId = ride.Id,
+                PassengerId = passenger2.Id,
+                PickupLocation = "Oshodi",
+                DropoffLocation = "Ajah",
+                SeatsBooked = 2,
+                PricePerSeat = 1000m,
+                TotalFare = 2000m,
+                BookingStatus = BookingStatus.Accepted,
+                PaymentStatus = PaymentStatus.Paid
+            };
+
+            await context.Users.AddRangeAsync(driver, passenger1, passenger2);
+            await context.Wallets.AddAsync(driverWallet);
+            await context.Vehicles.AddAsync(vehicle);
+            await context.Rides.AddAsync(ride);
+            await context.RideBookings.AddRangeAsync(booking1, booking2);
+            await context.SaveChangesAsync();
+
+            var currentUserServiceMock = new Mock<ICurrentUserService>();
+            currentUserServiceMock.Setup(c => c.UserId).Returns(driver.Id);
+
+            // 10% platform commission configured
+            var inMemorySettings = new Dictionary<string, string?>
+            {
+                { "PlatformSettings:CommissionPercentage", "10.0" }
+            };
+            IConfiguration configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(inMemorySettings)
+                .Build();
+
+            var completeHandler = new CompleteRideCommandHandler(context, currentUserServiceMock.Object, configuration);
+            var result = await completeHandler.Handle(new CompleteRideCommand(ride.Id), CancellationToken.None);
+
+            Assert.True(result.Succeeded);
+
+            // Verify Booking 1: Total 1000 -> 10% Commission (100) -> Driver Earnings (900)
+            var b1 = await context.RideBookings.FindAsync(booking1.Id);
+            Assert.Equal(100m, b1!.CommissionAmount);
+            Assert.Equal(900m, b1.DriverEarnings);
+            Assert.Equal(BookingStatus.Completed, b1.BookingStatus);
+
+            // Verify Booking 2: Total 2000 -> 10% Commission (200) -> Driver Earnings (1800)
+            var b2 = await context.RideBookings.FindAsync(booking2.Id);
+            Assert.Equal(200m, b2!.CommissionAmount);
+            Assert.Equal(1800m, b2.DriverEarnings);
+            Assert.Equal(BookingStatus.Completed, b2.BookingStatus);
+
+            // Verify Driver Wallet credited with net total: 900 + 1800 = 2700 NGN
+            var updatedDriverWallet = await context.Wallets.FindAsync(driverWallet.Id);
+            Assert.Equal(2700m, updatedDriverWallet!.Balance);
+
+            // Verify Platform Commission transactions recorded
+            var commissionTransactions = await context.Transactions
+                .Where(t => t.Type == TransactionType.PlatformCommission)
+                .ToListAsync();
+            Assert.Equal(2, commissionTransactions.Count);
+            Assert.Equal(300m, commissionTransactions.Sum(t => t.Amount)); // 100 + 200 = 300 total platform commission
         }
     }
 }

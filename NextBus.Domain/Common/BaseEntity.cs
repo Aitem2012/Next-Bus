@@ -9,3 +9,4 @@ namespace NextBus.Domain.Common
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 }
+

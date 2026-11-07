@@ -31,3 +31,4 @@ namespace NextBus.Domain.Entities
         public virtual ICollection<RideBooking> Bookings { get; set; } = new List<RideBooking>();
     }
 }
+

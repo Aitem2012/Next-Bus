@@ -11,6 +11,7 @@ using NextBus.Application.Common.Interfaces;
 using NextBus.Application.Common.Models;
 using NextBus.Application.DTOs;
 using NextBus.Domain.Entities;
+using NextBus.Domain.Enums;
 
 namespace NextBus.Application.Features.Auth
 {
@@ -32,15 +33,18 @@ namespace NextBus.Application.Features.Auth
     {
         private readonly UserManager<AppUser> _userManager;
         private readonly IJwtTokenService _jwtTokenService;
+        private readonly IOtpService _otpService;
         private readonly IMapper _mapper;
 
         public RegisterUserCommandHandler(
             UserManager<AppUser> userManager,
             IJwtTokenService jwtTokenService,
+            IOtpService otpService,
             IMapper mapper)
         {
             _userManager = userManager;
             _jwtTokenService = jwtTokenService;
+            _otpService = otpService;
             _mapper = mapper;
         }
 
@@ -63,7 +67,7 @@ namespace NextBus.Application.Features.Auth
                 Firstname = dto.Firstname.Trim(),
                 Lastname = dto.Lastname.Trim(),
                 PhoneNumber = normalizedPhone,
-                EmailConfirmed = true,
+                EmailConfirmed = false,
                 Wallet = new Wallet
                 {
                     Balance = 0m,
@@ -78,6 +82,9 @@ namespace NextBus.Application.Features.Auth
                 return Result<AuthResponseDto>.Failure(createResult.Errors.Select(e => e.Description));
             }
 
+            // Generate and send Email Verification OTP
+            await _otpService.GenerateAndSendOtpAsync(user.Email, user.Id, OtpPurpose.EmailVerification);
+
             var roles = await _userManager.GetRolesAsync(user);
             var token = _jwtTokenService.GenerateToken(user, roles);
 
@@ -85,7 +92,7 @@ namespace NextBus.Application.Features.Auth
             {
                 Token = token,
                 User = _mapper.Map<UserDto>(user)
-            }, "User registered successfully.");
+            }, "User registered successfully. A 6-digit verification OTP has been sent to your email.");
         }
     }
 }

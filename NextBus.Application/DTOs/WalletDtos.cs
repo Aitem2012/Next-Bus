@@ -36,3 +36,4 @@ namespace NextBus.Application.DTOs
         public string AccountNumber { get; set; } = string.Empty;
     }
 }
+

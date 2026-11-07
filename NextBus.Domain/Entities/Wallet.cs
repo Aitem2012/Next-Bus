@@ -15,3 +15,4 @@ namespace NextBus.Domain.Entities
         public virtual ICollection<WalletHistory> Histories { get; set; } = new List<WalletHistory>();
     }
 }
+

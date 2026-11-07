@@ -53,3 +53,4 @@ namespace NextBus.Application.DTOs
         public bool? IsPublicTransit { get; set; }
     }
 }
+

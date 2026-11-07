@@ -21,3 +21,4 @@ namespace NextBus.Domain.Entities
         public virtual ICollection<Ride> Rides { get; set; } = new List<Ride>();
     }
 }
+

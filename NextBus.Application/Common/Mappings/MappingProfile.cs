@@ -37,3 +37,4 @@ namespace NextBus.Application.Common.Mappings
         }
     }
 }
+

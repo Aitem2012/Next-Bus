@@ -16,6 +16,10 @@ namespace NextBus.Domain.Entities
         public decimal PricePerSeat { get; set; }
         public decimal TotalFare { get; set; }
 
+        // Platform commission & driver earnings breakdown
+        public decimal CommissionAmount { get; set; } = 0m;
+        public decimal DriverEarnings { get; set; } = 0m;
+
         public BookingStatus BookingStatus { get; set; } = BookingStatus.Requested;
         public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Pending;
 

@@ -83,18 +83,60 @@ namespace NextBus.Application.Features.Rides
         }
     }
 
-    // 3. Complete Ride Command (Transfers earnings to driver's wallet)
+    // 3. Start Ride Command (Driver sets InProgress)
+    public record StartRideCommand(Guid RideId) : IRequest<Result>;
+
+    public class StartRideCommandHandler : IRequestHandler<StartRideCommand, Result>
+    {
+        private readonly IAppDbContext _context;
+        private readonly ICurrentUserService _currentUserService;
+
+        public StartRideCommandHandler(IAppDbContext context, ICurrentUserService currentUserService)
+        {
+            _context = context;
+            _currentUserService = currentUserService;
+        }
+
+        public async Task<Result> Handle(StartRideCommand request, CancellationToken cancellationToken)
+        {
+            var userId = _currentUserService.UserId;
+            var ride = await _context.Rides.FirstOrDefaultAsync(r => r.Id == request.RideId && r.DriverId == userId, cancellationToken);
+
+            if (ride == null)
+            {
+                return Result.Failure("Ride not found or you are not the driver.");
+            }
+
+            if (ride.Status != RideStatus.Scheduled)
+            {
+                return Result.Failure($"Ride cannot be started because it is currently {ride.Status}.");
+            }
+
+            ride.Status = RideStatus.InProgress;
+            ride.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync(cancellationToken);
+            return Result.Success("Ride is now in progress.");
+        }
+    }
+
+    // 4. Complete Ride Command (Transfers earnings net of commission to driver's wallet)
     public record CompleteRideCommand(Guid RideId) : IRequest<Result>;
 
     public class CompleteRideCommandHandler : IRequestHandler<CompleteRideCommand, Result>
     {
         private readonly IAppDbContext _context;
         private readonly ICurrentUserService _currentUserService;
+        private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
 
-        public CompleteRideCommandHandler(IAppDbContext context, ICurrentUserService currentUserService)
+        public CompleteRideCommandHandler(
+            IAppDbContext context,
+            ICurrentUserService currentUserService,
+            Microsoft.Extensions.Configuration.IConfiguration configuration)
         {
             _context = context;
             _currentUserService = currentUserService;
+            _configuration = configuration;
         }
 
         public async Task<Result> Handle(CompleteRideCommand request, CancellationToken cancellationToken)
@@ -117,41 +159,150 @@ namespace NextBus.Application.Features.Rides
             ride.Status = RideStatus.Completed;
             ride.UpdatedAt = DateTime.UtcNow;
 
-            // Credit driver wallet with total paid fares from accepted bookings
-            var acceptedBookings = ride.Bookings.Where(b => b.BookingStatus == BookingStatus.Accepted).ToList();
-            var totalEarnings = acceptedBookings.Sum(b => b.TotalFare);
+            var commissionRate = decimal.TryParse(_configuration["PlatformSettings:CommissionPercentage"], out var cp) ? cp : 10.0m;
 
-            if (totalEarnings > 0)
+            var acceptedBookings = ride.Bookings.Where(b => b.BookingStatus == BookingStatus.Accepted).ToList();
+            decimal totalDriverEarnings = 0m;
+            decimal totalCommission = 0m;
+
+            foreach (var booking in acceptedBookings)
+            {
+                var commission = Math.Round(booking.TotalFare * (commissionRate / 100m), 2);
+                var driverEarnings = booking.TotalFare - commission;
+
+                booking.CommissionAmount = commission;
+                booking.DriverEarnings = driverEarnings;
+                booking.BookingStatus = BookingStatus.Completed;
+                booking.UpdatedAt = DateTime.UtcNow;
+
+                totalDriverEarnings += driverEarnings;
+                totalCommission += commission;
+
+                var commTx = new Transaction
+                {
+                    AppUserId = userId!,
+                    Amount = commission,
+                    Type = TransactionType.PlatformCommission,
+                    Reference = "COMM".GenerateRef(),
+                    Description = $"Platform {commissionRate}% commission on passenger booking {booking.Id} for ride {ride.Origin} -> {ride.Destination}",
+                    IsSuccessful = true,
+                    Date = DateTime.UtcNow
+                };
+                await _context.Transactions.AddAsync(commTx, cancellationToken);
+            }
+
+            if (totalDriverEarnings > 0)
             {
                 var driverWallet = await _context.Wallets.SingleOrDefaultAsync(w => w.AppUserId == userId, cancellationToken);
                 if (driverWallet != null)
                 {
-                    driverWallet.Balance += totalEarnings;
+                    driverWallet.Balance += totalDriverEarnings;
                     driverWallet.LastUpdated = DateTime.UtcNow;
 
                     var history = new WalletHistory
                     {
                         WalletId = driverWallet.Id,
                         AppUserId = userId!,
-                        Amount = totalEarnings,
+                        Amount = totalDriverEarnings,
                         Type = "RideEarnings",
                         Reference = "EARN".GenerateRef(),
-                        Details = $"Earnings for completed ride {ride.Origin} -> {ride.Destination}",
+                        Details = $"Earnings (net of {commissionRate}% platform commission) for completed ride {ride.Origin} -> {ride.Destination} ({acceptedBookings.Count} passenger(s))",
                         Date = DateTime.UtcNow
                     };
                     await _context.WalletHistories.AddAsync(history, cancellationToken);
-                }
-            }
 
-            foreach (var booking in acceptedBookings)
-            {
-                booking.BookingStatus = BookingStatus.Completed;
-                booking.UpdatedAt = DateTime.UtcNow;
+                    var earnTx = new Transaction
+                    {
+                        AppUserId = userId!,
+                        Amount = totalDriverEarnings,
+                        Type = TransactionType.RideEarnings,
+                        Reference = history.Reference,
+                        Description = history.Details,
+                        IsSuccessful = true,
+                        Date = DateTime.UtcNow
+                    };
+                    await _context.Transactions.AddAsync(earnTx, cancellationToken);
+                }
             }
 
             await _context.SaveChangesAsync(cancellationToken);
 
-            return Result.Success("Ride completed and earnings credited to your wallet.");
+            return Result.Success($"Ride completed. Total earnings of ₦{totalDriverEarnings:N2} (net of ₦{totalCommission:N2} platform commission) credited to your wallet.");
+        }
+    }
+
+    // 5. Cancel Ride Command (Driver cancels and auto-refunds all passengers)
+    public record CancelRideCommand(Guid RideId) : IRequest<Result>;
+
+    public class CancelRideCommandHandler : IRequestHandler<CancelRideCommand, Result>
+    {
+        private readonly IAppDbContext _context;
+        private readonly ICurrentUserService _currentUserService;
+
+        public CancelRideCommandHandler(IAppDbContext context, ICurrentUserService currentUserService)
+        {
+            _context = context;
+            _currentUserService = currentUserService;
+        }
+
+        public async Task<Result> Handle(CancelRideCommand request, CancellationToken cancellationToken)
+        {
+            var userId = _currentUserService.UserId;
+            var ride = await _context.Rides
+                .Include(r => r.Bookings)
+                .FirstOrDefaultAsync(r => r.Id == request.RideId && r.DriverId == userId, cancellationToken);
+
+            if (ride == null)
+            {
+                return Result.Failure("Ride not found or you are not the driver.");
+            }
+
+            if (ride.Status == RideStatus.Completed || ride.Status == RideStatus.Cancelled)
+            {
+                return Result.Failure($"Ride cannot be cancelled because it is already {ride.Status}.");
+            }
+
+            ride.Status = RideStatus.Cancelled;
+            ride.UpdatedAt = DateTime.UtcNow;
+
+            // Automatically refund all passengers who have paid bookings
+            var activeBookings = ride.Bookings
+                .Where(b => b.BookingStatus == BookingStatus.Accepted || b.BookingStatus == BookingStatus.Requested)
+                .ToList();
+
+            foreach (var booking in activeBookings)
+            {
+                if (booking.PaymentStatus == PaymentStatus.Paid)
+                {
+                    var passengerWallet = await _context.Wallets
+                        .SingleOrDefaultAsync(w => w.AppUserId == booking.PassengerId, cancellationToken);
+
+                    if (passengerWallet != null)
+                    {
+                        passengerWallet.Balance += booking.TotalFare;
+                        passengerWallet.LastUpdated = DateTime.UtcNow;
+
+                        var refundHistory = new WalletHistory
+                        {
+                            WalletId = passengerWallet.Id,
+                            AppUserId = booking.PassengerId,
+                            Amount = booking.TotalFare,
+                            Type = "Refund",
+                            Reference = "RFND".GenerateRef(),
+                            Details = $"Refund due to driver cancellation of ride {ride.Origin} -> {ride.Destination}",
+                            Date = DateTime.UtcNow
+                        };
+                        await _context.WalletHistories.AddAsync(refundHistory, cancellationToken);
+                    }
+                    booking.PaymentStatus = PaymentStatus.Refunded;
+                }
+
+                booking.BookingStatus = BookingStatus.Cancelled;
+                booking.UpdatedAt = DateTime.UtcNow;
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
+            return Result.Success("Ride cancelled and all passenger fares have been refunded.");
         }
     }
 }

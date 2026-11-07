@@ -28,3 +28,4 @@ namespace NextBus.Application.DTOs
         public int TotalSeats { get; set; }
     }
 }
+

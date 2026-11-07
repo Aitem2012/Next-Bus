@@ -16,3 +16,4 @@ namespace NextBus.Domain.Enums
         Rejected = 3
     }
 }
+

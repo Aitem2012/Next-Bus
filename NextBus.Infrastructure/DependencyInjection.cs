@@ -16,7 +16,14 @@ namespace NextBus.Infrastructure
             services.AddScoped<ICurrentUserService, CurrentUserService>();
             services.AddSingleton<IJwtTokenService, JwtTokenService>();
 
-            var keyString = configuration["Jwt:Key"] ?? "NextBus_Super_Secret_Key_For_Authentication_2026_Secure_JWT";
+            // Email & OTP Services
+            services.AddTransient<IEmailService, EmailService>();
+            services.AddScoped<IOtpService, OtpService>();
+
+            // Paystack Service with typed HttpClient
+            services.AddHttpClient<IPaystackService, PaystackService>();
+
+            var keyString = configuration["Jwt:Key"] ?? "NextBus_Super_Secret_Key_For_Authentication_2026_Secure_JWT_Key_Longer_Than_32_Chars";
             var issuer = configuration["Jwt:Issuer"] ?? "NextBusAPI";
             var audience = configuration["Jwt:Audience"] ?? "NextBusClients";
 

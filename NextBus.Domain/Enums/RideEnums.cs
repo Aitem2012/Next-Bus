@@ -1,5 +1,12 @@
 namespace NextBus.Domain.Enums
 {
+    public enum OtpPurpose
+    {
+        EmailVerification = 1,
+        PasswordReset = 2,
+        Withdrawal = 3
+    }
+
     public enum RideStatus
     {
         Scheduled = 1,
@@ -30,6 +37,7 @@ namespace NextBus.Domain.Enums
         RideFare = 2,
         RideEarnings = 3,
         Refund = 4,
-        Withdrawal = 5
+        Withdrawal = 5,
+        PlatformCommission = 6
     }
 }

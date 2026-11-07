@@ -19,6 +19,42 @@ namespace NextBus.API.Controllers
             return HandleResult(result);
         }
 
+        [HttpPost("verify-email-otp")]
+        [ProducesResponseType(typeof(Result<AuthResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(Result<AuthResponseDto>), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> VerifyEmailOtp([FromBody] VerifyEmailOtpDto dto)
+        {
+            var result = await Mediator.Send(new VerifyEmailOtpCommand(dto));
+            return HandleResult(result);
+        }
+
+        [HttpPost("resend-email-otp")]
+        [ProducesResponseType(typeof(Result), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(Result), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> ResendEmailOtp([FromQuery] string email)
+        {
+            var result = await Mediator.Send(new ResendEmailOtpCommand(email));
+            return HandleResult(result);
+        }
+
+        [HttpPost("request-password-reset-otp")]
+        [ProducesResponseType(typeof(Result), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(Result), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> RequestPasswordResetOtp([FromBody] RequestPasswordResetDto dto)
+        {
+            var result = await Mediator.Send(new RequestPasswordResetOtpCommand(dto));
+            return HandleResult(result);
+        }
+
+        [HttpPost("reset-password-otp")]
+        [ProducesResponseType(typeof(Result), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(Result), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> ResetPasswordWithOtp([FromBody] ResetPasswordWithOtpDto dto)
+        {
+            var result = await Mediator.Send(new ResetPasswordWithOtpCommand(dto));
+            return HandleResult(result);
+        }
+
         [HttpPost("login")]
         [ProducesResponseType(typeof(Result<AuthResponseDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(Result<AuthResponseDto>), StatusCodes.Status400BadRequest)]

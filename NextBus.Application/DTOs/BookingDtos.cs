@@ -45,3 +45,4 @@ namespace NextBus.Application.DTOs
         public string? Reason { get; set; }
     }
 }
+
