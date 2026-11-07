@@ -10,6 +10,12 @@ using NextBus.Application.DTOs;
 
 namespace NextBus.API.Controllers
 {
+    public class FileUploadRequest
+    {
+        public IFormFile File { get; set; } = null!;
+        public string? Folder { get; set; }
+    }
+
     [Authorize]
     [ApiController]
     [Route("api/[controller]")]
@@ -26,15 +32,17 @@ namespace NextBus.API.Controllers
         /// Upload an image file directly to Cloudinary (e.g. 4-corner vehicle photos, profile pictures).
         /// </summary>
         [HttpPost("upload")]
+        [Consumes("multipart/form-data")]
         [ProducesResponseType(typeof(Result<MediaUploadResponseDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(Result<MediaUploadResponseDto>), StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> UploadImage([FromForm] IFormFile file, [FromForm] string? folder = "nextbus/vehicles")
+        public async Task<IActionResult> UploadImage([FromForm] FileUploadRequest request)
         {
-            if (file == null || file.Length == 0)
+            if (request?.File == null || request.File.Length == 0)
             {
                 return BadRequest(Result<MediaUploadResponseDto>.Failure("No file was uploaded or file is empty."));
             }
 
+            var file = request.File;
             var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
             var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
             if (Array.IndexOf(allowedExtensions, ext) < 0)
@@ -43,7 +51,7 @@ namespace NextBus.API.Controllers
             }
 
             using var stream = file.OpenReadStream();
-            var targetFolder = string.IsNullOrWhiteSpace(folder) ? "nextbus/vehicles" : folder;
+            var targetFolder = string.IsNullOrWhiteSpace(request.Folder) ? "nextbus/vehicles" : request.Folder;
             var result = await _cloudinaryService.UploadImageAsync(stream, file.FileName, targetFolder);
 
             if (!result.Succeeded || string.IsNullOrEmpty(result.Data))
@@ -96,17 +104,19 @@ namespace NextBus.API.Controllers
         /// Upload a driver license or verification document (PDF, PNG, JPG) to Cloudinary.
         /// </summary>
         [HttpPost("upload-document")]
+        [Consumes("multipart/form-data")]
         [ProducesResponseType(typeof(Result<MediaUploadResponseDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(Result<MediaUploadResponseDto>), StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> UploadDocument([FromForm] IFormFile file, [FromForm] string? folder = "nextbus/licenses")
+        public async Task<IActionResult> UploadDocument([FromForm] FileUploadRequest request)
         {
-            if (file == null || file.Length == 0)
+            if (request?.File == null || request.File.Length == 0)
             {
                 return BadRequest(Result<MediaUploadResponseDto>.Failure("No file was uploaded or file is empty."));
             }
 
+            var file = request.File;
             using var stream = file.OpenReadStream();
-            var targetFolder = string.IsNullOrWhiteSpace(folder) ? "nextbus/licenses" : folder;
+            var targetFolder = string.IsNullOrWhiteSpace(request.Folder) ? "nextbus/licenses" : request.Folder;
             var result = await _cloudinaryService.UploadDocumentAsync(stream, file.FileName, targetFolder);
 
             if (!result.Succeeded || string.IsNullOrEmpty(result.Data))
