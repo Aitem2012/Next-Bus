@@ -11,6 +11,11 @@ using NextBus.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Load local overrides (gitignored) and environment variables
+builder.Configuration
+    .AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables();
+
 // Ensure ContentRootPath is explicitly available for SQLite canonical path resolution
 builder.Configuration["ContentRootPath"] = builder.Environment.ContentRootPath;
 

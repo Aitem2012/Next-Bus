@@ -78,7 +78,7 @@ NextBus/
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Data Source=NextBus.db"
+    "DefaultConnection": "Host=pg-79f9dbb-techart.h.aivencloud.com;Port=27310;Database=next-bus;Username=avnadmin;Password=YOUR_AIVEN_PASSWORD;SslMode=Require;Trust Server Certificate=true"
   },
   "Jwt": {
     "Key": "NextBus_Super_Secret_Key_For_Authentication_2026_Secure_JWT_Key_Longer_Than_32_Chars",
@@ -168,3 +168,4 @@ Visit Swagger UI at: `http://localhost:5000/`
 * `POST /api/wallets/paystack/webhook` - Paystack webhook listener
 * `POST /api/wallets/withdraw/request-otp` - Step 1: Verify destination account & send OTP
 * `POST /api/wallets/withdraw/confirm` - Step 2: Confirm OTP & execute transfer
+

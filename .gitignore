@@ -58,6 +58,10 @@ project.assets.json
 .Trashes
 ehthumbs.db
 Thumbs.db
+## Local Configuration / Secrets
+appsettings.Local.json
+appsettings.*.Local.json
+*.local.json
 Library/
 .local/
 
