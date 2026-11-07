@@ -96,6 +96,7 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
         run: |
           VPS_HOST="${{ secrets.VPS_HOST || secrets.DEV_VPS_HOST || secrets.PROD_VPS_HOST || secrets.HOST || secrets.SERVER_HOST }}"
+          VPS_HOST="$(echo "${VPS_HOST}" | tr -d '[:space:]')"
           if [[ -z "$VPS_HOST" ]]; then
             VPS_HOST="api-dev-nextbus.u-check.ng"
           fi
@@ -107,10 +108,12 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
         run: |
           DEPLOY_USER="${{ secrets.VPS_USER }}"
+          DEPLOY_USER="$(echo "${DEPLOY_USER}" | tr -d '[:space:]')"
           if [[ -z "$DEPLOY_USER" || "$DEPLOY_USER" == "root" ]]; then
             DEPLOY_USER="ubuntu"
           fi
           VPS_HOST="${{ secrets.VPS_HOST || secrets.DEV_VPS_HOST || secrets.PROD_VPS_HOST || secrets.HOST || secrets.SERVER_HOST }}"
+          VPS_HOST="$(echo "${VPS_HOST}" | tr -d '[:space:]')"
           if [[ -z "$VPS_HOST" ]]; then
             VPS_HOST="api-dev-nextbus.u-check.ng"
           fi
@@ -118,7 +121,7 @@ jobs:
           SERVICE_NAME="nextbus-dev-api"
 
           echo "Preparing VPS environment on ${DEPLOY_USER}@${VPS_HOST}:${TARGET_PATH}..."
-          ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${VPS_HOST} "
+          ssh -o StrictHostKeyChecking=no "${DEPLOY_USER}@${VPS_HOST}" "
             sudo mkdir -p ${TARGET_PATH} /etc/nextbus-api /var/www/.dotnet
             sudo chown -R www-data:www-data /var/www/.dotnet 2>/dev/null || true
             sudo chown -R ${DEPLOY_USER}:${DEPLOY_USER} ${TARGET_PATH}
@@ -129,26 +132,30 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
         run: |
           DEPLOY_USER="${{ secrets.VPS_USER }}"
+          DEPLOY_USER="$(echo "${DEPLOY_USER}" | tr -d '[:space:]')"
           if [[ -z "$DEPLOY_USER" || "$DEPLOY_USER" == "root" ]]; then
             DEPLOY_USER="ubuntu"
           fi
           VPS_HOST="${{ secrets.VPS_HOST || secrets.DEV_VPS_HOST || secrets.PROD_VPS_HOST || secrets.HOST || secrets.SERVER_HOST }}"
+          VPS_HOST="$(echo "${VPS_HOST}" | tr -d '[:space:]')"
           if [[ -z "$VPS_HOST" ]]; then
             VPS_HOST="api-dev-nextbus.u-check.ng"
           fi
           TARGET_PATH="/var/www/nextbus-dev-api"
 
           echo "Syncing build artifacts to ${DEPLOY_USER}@${VPS_HOST}:${TARGET_PATH}..."
-          rsync -avz --delete --exclude 'appsettings.Local.json' --exclude 'appsettings.Production.json' publish_output/ ${DEPLOY_USER}@${VPS_HOST}:${TARGET_PATH}/
+          rsync -avz -e "ssh -o StrictHostKeyChecking=no" --delete --exclude 'appsettings.Local.json' --exclude 'appsettings.Production.json' publish_output/ "${DEPLOY_USER}@${VPS_HOST}:${TARGET_PATH}/"
 
       - name: Configure Systemd and Nginx on VPS
         if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
         run: |
           DEPLOY_USER="${{ secrets.VPS_USER }}"
+          DEPLOY_USER="$(echo "${DEPLOY_USER}" | tr -d '[:space:]')"
           if [[ -z "$DEPLOY_USER" || "$DEPLOY_USER" == "root" ]]; then
             DEPLOY_USER="ubuntu"
           fi
           VPS_HOST="${{ secrets.VPS_HOST || secrets.DEV_VPS_HOST || secrets.PROD_VPS_HOST || secrets.HOST || secrets.SERVER_HOST }}"
+          VPS_HOST="$(echo "${VPS_HOST}" | tr -d '[:space:]')"
           if [[ -z "$VPS_HOST" ]]; then
             VPS_HOST="api-dev-nextbus.u-check.ng"
           fi
@@ -156,14 +163,14 @@ jobs:
           SERVICE_NAME="nextbus-dev-api"
 
           # 1. Update systemd service unit
-          scp -o StrictHostKeyChecking=no deploy/nextbus-dev-api.service ${DEPLOY_USER}@${VPS_HOST}:/tmp/nextbus-dev-api.service
-          ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${VPS_HOST} "
+          scp -o StrictHostKeyChecking=no deploy/nextbus-dev-api.service "${DEPLOY_USER}@${VPS_HOST}:/tmp/nextbus-dev-api.service"
+          ssh -o StrictHostKeyChecking=no "${DEPLOY_USER}@${VPS_HOST}" "
             sudo mv /tmp/nextbus-dev-api.service /etc/systemd/system/${SERVICE_NAME}.service
           "
 
           # 2. Configure Nginx virtual host for api-dev-nextbus.u-check.ng if not present
-          scp -o StrictHostKeyChecking=no deploy/nginx-api-dev-nextbus.conf ${DEPLOY_USER}@${VPS_HOST}:/tmp/nginx-api-dev-nextbus.conf
-          ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${VPS_HOST} "
+          scp -o StrictHostKeyChecking=no deploy/nginx-api-dev-nextbus.conf "${DEPLOY_USER}@${VPS_HOST}:/tmp/nginx-api-dev-nextbus.conf"
+          ssh -o StrictHostKeyChecking=no "${DEPLOY_USER}@${VPS_HOST}" "
             if [ ! -f /etc/nginx/sites-available/api-dev-nextbus.conf ] && [ ! -f /etc/nginx/sites-available/api-dev-nextbus.u-check.ng ]; then
               sudo mv /tmp/nginx-api-dev-nextbus.conf /etc/nginx/sites-available/api-dev-nextbus.conf
               sudo ln -sf /etc/nginx/sites-available/api-dev-nextbus.conf /etc/nginx/sites-enabled/
@@ -174,7 +181,7 @@ jobs:
           "
 
           # 3. Initialize /etc/nextbus-api/nextbus-dev-api.env if missing
-          ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${VPS_HOST} "
+          ssh -o StrictHostKeyChecking=no "${DEPLOY_USER}@${VPS_HOST}" "
             if [ ! -f /etc/nextbus-api/nextbus-dev-api.env ]; then
               sudo tee /etc/nextbus-api/nextbus-dev-api.env > /dev/null << 'ENV_EOF'
           ASPNETCORE_ENVIRONMENT=Production
@@ -185,7 +192,7 @@ jobs:
           "
 
           # 4. Set permissions, reload systemd, and restart service
-          ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${VPS_HOST} "
+          ssh -o StrictHostKeyChecking=no "${DEPLOY_USER}@${VPS_HOST}" "
             sudo chown -R ${DEPLOY_USER}:www-data ${TARGET_PATH}
             sudo chmod -R 755 ${TARGET_PATH}
             sudo mkdir -p /var/www/.dotnet
