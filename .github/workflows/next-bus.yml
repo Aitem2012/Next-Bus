@@ -1,4 +1,4 @@
-name: .NET 8 CI
+name: Build, Test, and Deploy NextBus API
 
 on:
   push:
@@ -7,22 +7,174 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  build:
+  build-test-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '8.0.x'
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
 
-    - name: Restore dependencies
-      run: dotnet restore NextBus.sln
+      - name: Cache NuGet Packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
 
-    - name: Build
-      run: dotnet build NextBus.sln --no-restore --configuration Release
+      - name: Restore Dependencies
+        run: dotnet restore NextBus.sln
 
-    - name: Test
-      run: dotnet test NextBus.sln --no-build --configuration Release --verbosity normal
+      - name: Build Solution
+        run: dotnet build NextBus.sln --configuration Release --no-restore
+
+      - name: Run Unit Tests
+        run: dotnet test NextBus.sln --configuration Release --no-build --verbosity normal
+
+      - name: Publish API Project
+        run: dotnet publish NextBus.API/NextBus.API.csproj -c Release -o publish_output --no-restore
+
+      - name: Inject Environment Configurations
+        run: |
+          node - << 'EOF'
+          const fs = require('fs');
+          const targetFile = './publish_output/appsettings.Production.json';
+          const devFile = './publish_output/appsettings.Development.json';
+
+          function updateConfig(filePath) {
+            let config = {};
+            if (fs.existsSync(filePath)) {
+              config = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+            } else if (fs.existsSync('./publish_output/appsettings.json')) {
+              config = JSON.parse(fs.readFileSync('./publish_output/appsettings.json', 'utf8'));
+            }
+
+            config.ConnectionStrings = config.ConnectionStrings || {};
+            if (process.env.DB_CONNECTION_STRING) {
+              config.ConnectionStrings.DefaultConnection = process.env.DB_CONNECTION_STRING;
+            }
+
+            if (process.env.PAYSTACK_SECRET_KEY) {
+              config.Paystack = config.Paystack || {};
+              config.Paystack.SecretKey = process.env.PAYSTACK_SECRET_KEY;
+            }
+            if (process.env.PAYSTACK_PUBLIC_KEY) {
+              config.Paystack = config.Paystack || {};
+              config.Paystack.PublicKey = process.env.PAYSTACK_PUBLIC_KEY;
+            }
+
+            fs.writeFileSync(filePath, JSON.stringify(config, null, 2), 'utf8');
+            console.log(`Generated configuration at ${filePath}`);
+          }
+
+          updateConfig(targetFile);
+          updateConfig(devFile);
+          EOF
+        env:
+          DB_CONNECTION_STRING: ${{ secrets.NEXTBUS_DB_CONNECTION_STRING || secrets.DEV_DB_CONNECTION_STRING || secrets.DB_CONNECTION_STRING }}
+          PAYSTACK_SECRET_KEY: ${{ secrets.PAYSTACK_SECRET_KEY }}
+          PAYSTACK_PUBLIC_KEY: ${{ secrets.PAYSTACK_PUBLIC_KEY }}
+
+      # -------------------------------------------------------------
+      # Deployment to VPS for 'develop' branch
+      # Subdomain: api-dev-nextbus.u-check.ng
+      # Service: nextbus-dev-api.service (Port 5070)
+      # -------------------------------------------------------------
+      - name: Load VPS Deploy Key
+        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY || secrets.VPS_DEPLOY_KEY }}
+
+      - name: Trust VPS Host Key
+        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Prepare VPS Application Directory
+        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        run: |
+          DEPLOY_USER="${{ secrets.VPS_USER }}"
+          if [[ -z "$DEPLOY_USER" || "$DEPLOY_USER" == "root" ]]; then
+            DEPLOY_USER="deploy"
+          fi
+          VPS_HOST="${{ secrets.VPS_HOST }}"
+          TARGET_PATH="/var/www/nextbus-dev-api"
+          SERVICE_NAME="nextbus-dev-api"
+
+          echo "Preparing VPS environment on ${DEPLOY_USER}@${VPS_HOST}:${TARGET_PATH}..."
+          ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${VPS_HOST} "
+            sudo mkdir -p ${TARGET_PATH} /etc/nextbus-api
+            sudo chown -R ${DEPLOY_USER}:${DEPLOY_USER} ${TARGET_PATH}
+            sudo systemctl stop ${SERVICE_NAME} 2>/dev/null || true
+          "
+
+      - name: Sync Published Files to VPS
+        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        run: |
+          DEPLOY_USER="${{ secrets.VPS_USER }}"
+          if [[ -z "$DEPLOY_USER" || "$DEPLOY_USER" == "root" ]]; then
+            DEPLOY_USER="deploy"
+          fi
+          VPS_HOST="${{ secrets.VPS_HOST }}"
+          TARGET_PATH="/var/www/nextbus-dev-api"
+
+          echo "Syncing build artifacts to ${TARGET_PATH}..."
+          rsync -avz --delete --exclude 'appsettings.Local.json' publish_output/ ${DEPLOY_USER}@${VPS_HOST}:${TARGET_PATH}/
+
+      - name: Configure Systemd and Nginx on VPS
+        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        run: |
+          DEPLOY_USER="${{ secrets.VPS_USER }}"
+          if [[ -z "$DEPLOY_USER" || "$DEPLOY_USER" == "root" ]]; then
+            DEPLOY_USER="deploy"
+          fi
+          VPS_HOST="${{ secrets.VPS_HOST }}"
+          TARGET_PATH="/var/www/nextbus-dev-api"
+          SERVICE_NAME="nextbus-dev-api"
+
+          # 1. Update systemd service unit
+          scp -o StrictHostKeyChecking=no deploy/nextbus-dev-api.service ${DEPLOY_USER}@${VPS_HOST}:/tmp/nextbus-dev-api.service
+          ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${VPS_HOST} "
+            sudo mv /tmp/nextbus-dev-api.service /etc/systemd/system/${SERVICE_NAME}.service
+          "
+
+          # 2. Configure Nginx virtual host for api-dev-nextbus.u-check.ng if not present
+          scp -o StrictHostKeyChecking=no deploy/nginx-api-dev-nextbus.conf ${DEPLOY_USER}@${VPS_HOST}:/tmp/nginx-api-dev-nextbus.conf
+          ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${VPS_HOST} "
+            if [ ! -f /etc/nginx/sites-available/api-dev-nextbus.conf ] && [ ! -f /etc/nginx/sites-available/api-dev-nextbus.u-check.ng ]; then
+              sudo mv /tmp/nginx-api-dev-nextbus.conf /etc/nginx/sites-available/api-dev-nextbus.conf
+              sudo ln -sf /etc/nginx/sites-available/api-dev-nextbus.conf /etc/nginx/sites-enabled/
+              sudo nginx -t && sudo systemctl reload nginx || true
+            else
+              rm -f /tmp/nginx-api-dev-nextbus.conf
+            fi
+          "
+
+          # 3. Initialize /etc/nextbus-api/nextbus-dev-api.env if missing
+          ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${VPS_HOST} "
+            if [ ! -f /etc/nextbus-api/nextbus-dev-api.env ]; then
+              sudo tee /etc/nextbus-api/nextbus-dev-api.env > /dev/null << 'ENV_EOF'
+          ASPNETCORE_ENVIRONMENT=Production
+          ASPNETCORE_URLS=http://127.0.0.1:5070
+          ENV_EOF
+              sudo chmod 600 /etc/nextbus-api/nextbus-dev-api.env
+            fi
+          "
+
+          # 4. Set permissions, reload systemd, and restart service
+          ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${VPS_HOST} "
+            sudo chown -R ${DEPLOY_USER}:www-data ${TARGET_PATH}
+            sudo chmod -R 755 ${TARGET_PATH}
+            sudo systemctl daemon-reload
+            sudo systemctl enable ${SERVICE_NAME}
+            sudo systemctl restart ${SERVICE_NAME}
+            sleep 3
+            sudo systemctl status ${SERVICE_NAME} --no-pager | head -n 15
+          "
