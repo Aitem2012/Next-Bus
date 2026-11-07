@@ -14,7 +14,26 @@ using NextBus.Domain.Enums;
 
 namespace NextBus.Application.Features.Rides
 {
-    public record CreateRideCommand(CreateRideDto Dto) : IRequest<Result<RideDto>>;
+    public record CreateRideCommand(CreateRideDto Dto) : IRequest<Result<RideDto>>
+    {
+        public CreateRideDto Dto { get; init; } = Normalize(Dto);
+
+        private static CreateRideDto Normalize(CreateRideDto dto)
+        {
+            if (dto != null)
+            {
+                if (dto.AvailableSeats <= 0 && dto.TotalSeatsOffered > 0)
+                {
+                    dto.AvailableSeats = dto.TotalSeatsOffered;
+                }
+                else if (dto.TotalSeatsOffered <= 0 && dto.AvailableSeats > 0)
+                {
+                    dto.TotalSeatsOffered = dto.AvailableSeats;
+                }
+            }
+            return dto!;
+        }
+    }
 
     public class CreateRideCommandValidator : AbstractValidator<CreateRideCommand>
     {
@@ -83,10 +102,12 @@ namespace NextBus.Application.Features.Rides
                     $"Available seats ({request.Dto.AvailableSeats}) cannot exceed the vehicle's capacity ({vehicle.TotalSeats}).");
             }
 
+            var seats = request.Dto.AvailableSeats > 0 ? request.Dto.AvailableSeats : request.Dto.TotalSeatsOffered;
             var ride = _mapper.Map<Ride>(request.Dto);
             ride.DriverId = userId;
-            ride.TotalSeatsOffered = request.Dto.AvailableSeats;
-            ride.AvailableSeats = request.Dto.AvailableSeats;
+            ride.TotalSeatsOffered = seats;
+            ride.AvailableSeats = seats;
+            ride.DepartureTime = DateTime.SpecifyKind(request.Dto.DepartureTime, DateTimeKind.Utc);
             ride.Status = RideStatus.Scheduled;
 
             await _context.Rides.AddAsync(ride, cancellationToken);

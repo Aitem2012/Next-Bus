@@ -39,6 +39,7 @@ namespace NextBus.Application.DTOs
         public string? Stop2 { get; set; }
         public DateTime DepartureTime { get; set; }
         public int AvailableSeats { get; set; }
+        public int TotalSeatsOffered { get; set; }
         public decimal PricePerSeat { get; set; }
         public bool IsPublicTransit { get; set; }
         public string? Notes { get; set; }
