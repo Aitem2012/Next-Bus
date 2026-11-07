@@ -1,17 +1,18 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 using NextBus.Application;
 using NextBus.Infrastructure;
 using NextBus.Persistence;
-using NextBus.Persistence.Context;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Ensure ContentRootPath is explicitly available for SQLite canonical path resolution
+builder.Configuration["ContentRootPath"] = builder.Environment.ContentRootPath;
 
 // Add Clean Architecture layers
 builder.Services.AddApplication();
@@ -68,21 +69,8 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Migrate/Create SQLite Database on Startup
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    try
-    {
-        var context = services.GetRequiredService<AppDbContext>();
-        await context.Database.EnsureCreatedAsync();
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while creating or migrating the database.");
-    }
-}
+// Safely migrate database on startup preserving all existing records across restarts
+await app.Services.MigrateDatabaseAsync();
 
 if (app.Environment.IsDevelopment())
 {

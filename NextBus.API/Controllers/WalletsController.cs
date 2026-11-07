@@ -90,5 +90,20 @@ namespace NextBus.API.Controllers
             var result = await Mediator.Send(new WithdrawFundCommand(dto));
             return HandleResult(result);
         }
+
+        /// <summary>
+        /// Paystack Webhook endpoint (listens for charge.success, transfer.success, transfer.failed)
+        /// </summary>
+        [AllowAnonymous]
+        [HttpPost("paystack/webhook")]
+        public async Task<IActionResult> PaystackWebhook()
+        {
+            using var reader = new System.IO.StreamReader(Request.Body);
+            var payload = await reader.ReadToEndAsync();
+            var signature = Request.Headers["x-paystack-signature"].ToString();
+
+            var result = await Mediator.Send(new ProcessPaystackWebhookCommand(payload, signature));
+            return result.Succeeded ? Ok(result) : BadRequest(result);
+        }
     }
 }

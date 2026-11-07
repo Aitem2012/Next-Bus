@@ -81,3 +81,4 @@ namespace NextBus.Application.DTOs
         public string NewPassword { get; set; } = string.Empty;
     }
 }
+

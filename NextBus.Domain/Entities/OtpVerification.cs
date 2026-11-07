@@ -20,3 +20,4 @@ namespace NextBus.Domain.Entities
         }
     }
 }
+

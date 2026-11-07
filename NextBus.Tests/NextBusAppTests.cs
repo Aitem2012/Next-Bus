@@ -7,7 +7,9 @@ using AutoMapper;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using NextBus.Persistence;
 using Moq;
 using NextBus.Application.Common.Interfaces;
 using NextBus.Application.Common.Mappings;
@@ -617,6 +619,151 @@ namespace NextBus.Tests
                 .ToListAsync();
             Assert.Equal(2, commissionTransactions.Count);
             Assert.Equal(300m, commissionTransactions.Sum(t => t.Amount)); // 100 + 200 = 300 total platform commission
+        }
+
+        [Fact]
+        public async Task PaystackWebhook_CreditsWalletOnChargeSuccess()
+        {
+            using var context = CreateInMemoryDbContext();
+
+            var user = new AppUser
+            {
+                Id = "webhook-user-1",
+                Email = "webhook@test.com",
+                UserName = "webhook@test.com",
+                Firstname = "Sola",
+                Lastname = "Shittu"
+            };
+            var wallet = new Wallet
+            {
+                Id = Guid.NewGuid(),
+                AppUserId = user.Id,
+                Balance = 1000m,
+                Reference = "W_SOLA"
+            };
+
+            await context.Users.AddAsync(user);
+            await context.Wallets.AddAsync(wallet);
+            await context.SaveChangesAsync();
+
+            var inMemorySettings = new Dictionary<string, string?>
+            {
+                { "Paystack:SecretKey", "test_secret_key" }
+            };
+            IConfiguration configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(inMemorySettings)
+                .Build();
+
+            var loggerMock = new Mock<ILogger<ProcessPaystackWebhookCommandHandler>>();
+            var handler = new ProcessPaystackWebhookCommandHandler(context, configuration, loggerMock.Object);
+
+            var payload = @"{
+                ""event"": ""charge.success"",
+                ""data"": {
+                    ""reference"": ""T_WEBHOOK_999"",
+                    ""amount"": 500000,
+                    ""customer"": {
+                        ""email"": ""webhook@test.com""
+                    }
+                }
+            }";
+
+            // Compute valid HMAC-SHA512 signature
+            using var hmac = new System.Security.Cryptography.HMACSHA512(System.Text.Encoding.UTF8.GetBytes("test_secret_key"));
+            var signature = Convert.ToHexString(hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(payload))).ToLowerInvariant();
+
+            // 1. Process valid webhook
+            var result = await handler.Handle(new ProcessPaystackWebhookCommand(payload, signature), CancellationToken.None);
+
+            Assert.True(result.Succeeded);
+            var updatedWallet = await context.Wallets.FindAsync(wallet.Id);
+            Assert.Equal(6000m, updatedWallet!.Balance); // 1000 + 5000 = 6000
+
+            // 2. Process duplicate webhook -> idempotent, does not double-credit
+            var dupResult = await handler.Handle(new ProcessPaystackWebhookCommand(payload, signature), CancellationToken.None);
+            Assert.True(dupResult.Succeeded);
+            Assert.Equal(6000m, updatedWallet.Balance);
+        }
+
+        [Fact]
+        public async Task Database_PreservesDataAcrossRestarts()
+        {
+            var testDbPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"nextbus_restart_test_{Guid.NewGuid():N}.db");
+            var connString = $"Data Source={testDbPath}";
+
+            try
+            {
+                // App Run 1: Startup & Migration
+                var services1 = new ServiceCollection();
+                services1.AddLogging();
+                var config1 = new ConfigurationBuilder()
+                    .AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        { "ConnectionStrings:DefaultConnection", connString }
+                    })
+                    .Build();
+
+                services1.AddPersistence(config1);
+                var provider1 = services1.BuildServiceProvider();
+
+                // Run migration
+                await provider1.MigrateDatabaseAsync();
+
+                // Insert record in Run 1
+                using (var scope1 = provider1.CreateScope())
+                {
+                    var ctx1 = scope1.ServiceProvider.GetRequiredService<AppDbContext>();
+                    var user = new AppUser
+                    {
+                        Id = "persistent-user-1",
+                        Email = "persistent@test.com",
+                        UserName = "persistent@test.com",
+                        Firstname = "Persistent",
+                        Lastname = "User"
+                    };
+                    await ctx1.Users.AddAsync(user);
+                    await ctx1.SaveChangesAsync();
+                }
+
+                // Simulate app shutdown
+                await provider1.DisposeAsync();
+
+                // App Run 2: Restart app pointing to same database
+                var services2 = new ServiceCollection();
+                services2.AddLogging();
+                var config2 = new ConfigurationBuilder()
+                    .AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        { "ConnectionStrings:DefaultConnection", connString }
+                    })
+                    .Build();
+
+                services2.AddPersistence(config2);
+                var provider2 = services2.BuildServiceProvider();
+
+                // Run migration on restart (should NOT override, reset, or throw)
+                await provider2.MigrateDatabaseAsync();
+
+                // Verify record from Run 1 is intact
+                using (var scope2 = provider2.CreateScope())
+                {
+                    var ctx2 = scope2.ServiceProvider.GetRequiredService<AppDbContext>();
+                    var retrievedUser = await ctx2.Users.FindAsync("persistent-user-1");
+
+                    Assert.NotNull(retrievedUser);
+                    Assert.Equal("persistent@test.com", retrievedUser.Email);
+                    Assert.Equal("Persistent", retrievedUser.Firstname);
+                }
+
+                await provider2.DisposeAsync();
+            }
+            finally
+            {
+                if (System.IO.File.Exists(testDbPath))
+                {
+                    try { System.IO.File.Delete(testDbPath); } catch { }
+                }
+            }
         }
     }
 }

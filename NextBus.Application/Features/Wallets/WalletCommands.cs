@@ -14,6 +14,7 @@ using NextBus.Application.Common.Models;
 using NextBus.Application.DTOs;
 using NextBus.Domain.Entities;
 using NextBus.Domain.Enums;
+using Microsoft.Extensions.Logging;
 
 namespace NextBus.Application.Features.Wallets
 {
@@ -629,6 +630,171 @@ namespace NextBus.Application.Features.Wallets
             }
 
             return Result<WalletDto>.Success(_mapper.Map<WalletDto>(wallet));
+        }
+    }
+
+    // ==========================================
+    // 8. Paystack Webhook Handler
+    // ==========================================
+    public record ProcessPaystackWebhookCommand(string Payload, string? SignatureHeader) : IRequest<Result>;
+
+    public class ProcessPaystackWebhookCommandHandler : IRequestHandler<ProcessPaystackWebhookCommand, Result>
+    {
+        private readonly IAppDbContext _context;
+        private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
+        private readonly Microsoft.Extensions.Logging.ILogger<ProcessPaystackWebhookCommandHandler> _logger;
+
+        public ProcessPaystackWebhookCommandHandler(
+            IAppDbContext context,
+            Microsoft.Extensions.Configuration.IConfiguration configuration,
+            Microsoft.Extensions.Logging.ILogger<ProcessPaystackWebhookCommandHandler> logger)
+        {
+            _context = context;
+            _configuration = configuration;
+            _logger = logger;
+        }
+
+        public async Task<Result> Handle(ProcessPaystackWebhookCommand request, CancellationToken cancellationToken)
+        {
+            var secretKey = _configuration["Paystack:SecretKey"];
+
+            // Verify signature if secret key and header are provided
+            if (!string.IsNullOrEmpty(secretKey) && !string.IsNullOrEmpty(request.SignatureHeader))
+            {
+                using var hmac = new System.Security.Cryptography.HMACSHA512(System.Text.Encoding.UTF8.GetBytes(secretKey));
+                var hash = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(request.Payload));
+                var computedSignature = Convert.ToHexString(hash).ToLowerInvariant();
+
+                if (!string.Equals(computedSignature, request.SignatureHeader.Trim(), StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogWarning("Invalid Paystack webhook signature received.");
+                    return Result.Failure("Invalid signature.");
+                }
+            }
+
+            try
+            {
+                using var doc = JsonDocument.Parse(request.Payload);
+                var root = doc.RootElement;
+                var eventName = root.TryGetProperty("event", out var ev) ? ev.GetString() : null;
+
+                if (eventName == "charge.success")
+                {
+                    var data = root.GetProperty("data");
+                    var reference = data.GetProperty("reference").GetString();
+                    var amountInKobo = data.GetProperty("amount").GetDecimal();
+                    var amount = amountInKobo / 100m;
+                    var email = data.GetProperty("customer").GetProperty("email").GetString();
+
+                    if (string.IsNullOrEmpty(reference) || string.IsNullOrEmpty(email))
+                    {
+                        return Result.Failure("Invalid payload data.");
+                    }
+
+                    // Check if already processed
+                    var alreadyProcessed = await _context.Transactions
+                        .AnyAsync(t => t.Reference == reference && t.IsSuccessful, cancellationToken);
+
+                    if (alreadyProcessed)
+                    {
+                        return Result.Success("Charge event already processed.");
+                    }
+
+                    var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
+                    if (user == null)
+                    {
+                        _logger.LogWarning("User with email {Email} not found for webhook charge {Ref}", email, reference);
+                        return Result.Failure("User not found.");
+                    }
+
+                    var wallet = await _context.Wallets.SingleOrDefaultAsync(w => w.AppUserId == user.Id, cancellationToken);
+                    if (wallet == null)
+                    {
+                        wallet = new Wallet
+                        {
+                            AppUserId = user.Id,
+                            Balance = 0m,
+                            Reference = "NXBS_W".GenerateRef(),
+                            LastUpdated = DateTime.UtcNow
+                        };
+                        await _context.Wallets.AddAsync(wallet, cancellationToken);
+                    }
+
+                    wallet.Balance += amount;
+                    wallet.LastUpdated = DateTime.UtcNow;
+
+                    var history = new WalletHistory
+                    {
+                        WalletId = wallet.Id,
+                        AppUserId = user.Id,
+                        Amount = amount,
+                        Type = "TopUp",
+                        Reference = reference,
+                        Details = $"₦{amount:N2} credited via Paystack Webhook",
+                        Date = DateTime.UtcNow
+                    };
+
+                    var transaction = new Transaction
+                    {
+                        AppUserId = user.Id,
+                        Amount = amount,
+                        Type = TransactionType.TopUp,
+                        Reference = reference,
+                        Description = history.Details,
+                        IsSuccessful = true,
+                        Date = DateTime.UtcNow
+                    };
+
+                    await _context.WalletHistories.AddAsync(history, cancellationToken);
+                    await _context.Transactions.AddAsync(transaction, cancellationToken);
+                    await _context.SaveChangesAsync(cancellationToken);
+
+                    _logger.LogInformation("Successfully credited user {UserId} with ₦{Amount} via Paystack webhook", user.Id, amount);
+                    return Result.Success("Wallet credited successfully.");
+                }
+                else if (eventName == "transfer.failed" || eventName == "transfer.reversed")
+                {
+                    // Refund failed withdrawal
+                    var data = root.GetProperty("data");
+                    var reference = data.GetProperty("reference").GetString();
+                    var amountInKobo = data.GetProperty("amount").GetDecimal();
+                    var amount = amountInKobo / 100m;
+
+                    var originalTx = await _context.Transactions
+                        .FirstOrDefaultAsync(t => t.Reference == reference && t.Type == TransactionType.Withdrawal, cancellationToken);
+
+                    if (originalTx != null)
+                    {
+                        var wallet = await _context.Wallets.SingleOrDefaultAsync(w => w.AppUserId == originalTx.AppUserId, cancellationToken);
+                        if (wallet != null)
+                        {
+                            wallet.Balance += amount;
+                            wallet.LastUpdated = DateTime.UtcNow;
+
+                            var refundHistory = new WalletHistory
+                            {
+                                WalletId = wallet.Id,
+                                AppUserId = originalTx.AppUserId,
+                                Amount = amount,
+                                Type = "Refund",
+                                Reference = "RFND_".GenerateRef(),
+                                Details = $"Refund for failed Paystack withdrawal (Ref: {reference})",
+                                Date = DateTime.UtcNow
+                            };
+
+                            await _context.WalletHistories.AddAsync(refundHistory, cancellationToken);
+                            await _context.SaveChangesAsync(cancellationToken);
+                        }
+                    }
+                }
+
+                return Result.Success("Webhook processed.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing Paystack webhook.");
+                return Result.Failure($"Error processing webhook: {ex.Message}");
+            }
         }
     }
 }
