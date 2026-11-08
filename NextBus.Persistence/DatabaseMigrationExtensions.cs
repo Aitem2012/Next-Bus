@@ -278,6 +278,56 @@ CREATE TABLE IF NOT EXISTS ""Notifications"" (
         {
             try
             {
+                var adminEmail = configuration?["AdminUser:Email"] ?? "admin@nextbus.com";
+                var adminUser = await context.Users.FirstOrDefaultAsync(u => u.Email == adminEmail);
+                Wallet? adminWallet = null;
+
+                if (adminUser != null)
+                {
+                    adminWallet = await context.Wallets.SingleOrDefaultAsync(w => w.AppUserId == adminUser.Id);
+                    if (adminWallet == null)
+                    {
+                        adminWallet = new Wallet
+                        {
+                            AppUserId = adminUser.Id,
+                            Balance = 0m,
+                            Reference = "NXBS_ADMIN_W",
+                            LastUpdated = DateTime.UtcNow
+                        };
+                        await context.Wallets.AddAsync(adminWallet);
+                        await context.SaveChangesAsync();
+                    }
+
+                    // Re-attribute any previous PlatformCommission transactions to the admin user
+                    var orphanedComms = await context.Transactions
+                        .Where(t => t.Type == TransactionType.PlatformCommission && t.AppUserId != adminUser.Id)
+                        .ToListAsync();
+
+                    if (orphanedComms.Any())
+                    {
+                        var orphanSum = orphanedComms.Sum(t => t.Amount);
+                        foreach (var comm in orphanedComms)
+                        {
+                            comm.AppUserId = adminUser.Id;
+                        }
+                        adminWallet.Balance += orphanSum;
+                        adminWallet.LastUpdated = DateTime.UtcNow;
+
+                        var adminHist = new WalletHistory
+                        {
+                            WalletId = adminWallet.Id,
+                            AppUserId = adminUser.Id,
+                            Amount = orphanSum,
+                            Type = "PlatformCommission",
+                            Reference = $"COMM_RECON_{Guid.NewGuid():N}",
+                            Details = $"Reconciled platform commission collection across {orphanedComms.Count} passenger ride booking(s)",
+                            Date = DateTime.UtcNow
+                        };
+                        await context.WalletHistories.AddAsync(adminHist);
+                        logger.LogInformation("Reconciled ₦{Amount} platform revenue directly into Admin wallet ({Email})", orphanSum, adminEmail);
+                    }
+                }
+
                 var completedRides = await context.Rides
                     .Include(r => r.Bookings)
                     .Where(r => r.Status == RideStatus.Completed && r.Bookings.Any(b => 
@@ -285,7 +335,11 @@ CREATE TABLE IF NOT EXISTS ""Notifications"" (
                         b.PaymentStatus == PaymentStatus.Paid))
                     .ToListAsync();
 
-                if (!completedRides.Any()) return;
+                if (!completedRides.Any())
+                {
+                    await context.SaveChangesAsync();
+                    return;
+                }
 
                 var commissionRate = decimal.TryParse(configuration?["PlatformSettings:CommissionPercentage"], out var cp) ? cp : 10.0m;
 
@@ -298,6 +352,7 @@ CREATE TABLE IF NOT EXISTS ""Notifications"" (
                     if (!unpaidBookings.Any()) continue;
 
                     decimal totalEarnings = 0m;
+                    decimal totalCommission = 0m;
 
                     foreach (var booking in unpaidBookings)
                     {
@@ -310,18 +365,40 @@ CREATE TABLE IF NOT EXISTS ""Notifications"" (
                         booking.UpdatedAt = DateTime.UtcNow;
 
                         totalEarnings += driverEarnings;
+                        totalCommission += commission;
 
-                        var commTx = new Transaction
+                        if (adminUser != null)
                         {
-                            AppUserId = ride.DriverId,
-                            Amount = commission,
-                            Type = TransactionType.PlatformCommission,
-                            Reference = $"COMM_{booking.Id:N}",
-                            Description = $"Platform {commissionRate}% commission on passenger booking {booking.Id} for completed ride {ride.Origin} -> {ride.Destination}",
-                            IsSuccessful = true,
+                            var commTx = new Transaction
+                            {
+                                AppUserId = adminUser.Id,
+                                Amount = commission,
+                                Type = TransactionType.PlatformCommission,
+                                Reference = $"COMM_{booking.Id:N}",
+                                Description = $"Platform {commissionRate}% commission on passenger booking {booking.Id} for completed ride {ride.Origin} -> {ride.Destination}",
+                                IsSuccessful = true,
+                                Date = DateTime.UtcNow
+                            };
+                            await context.Transactions.AddAsync(commTx);
+                        }
+                    }
+
+                    if (totalCommission > 0 && adminWallet != null && adminUser != null)
+                    {
+                        adminWallet.Balance += totalCommission;
+                        adminWallet.LastUpdated = DateTime.UtcNow;
+
+                        var adminHist = new WalletHistory
+                        {
+                            WalletId = adminWallet.Id,
+                            AppUserId = adminUser.Id,
+                            Amount = totalCommission,
+                            Type = "PlatformCommission",
+                            Reference = $"COMM_RIDE_{ride.Id:N}",
+                            Details = $"Platform {commissionRate}% commission received for ride {ride.Origin} -> {ride.Destination}",
                             Date = DateTime.UtcNow
                         };
-                        await context.Transactions.AddAsync(commTx);
+                        await context.WalletHistories.AddAsync(adminHist);
                     }
 
                     if (totalEarnings > 0)
@@ -340,7 +417,7 @@ CREATE TABLE IF NOT EXISTS ""Notifications"" (
                                 Amount = totalEarnings,
                                 Type = "RideEarnings",
                                 Reference = earnRef,
-                                Details = $"Reconciled earnings (net of {commissionRate}% fee) for completed ride {ride.Origin} -> {ride.Destination} ({unpaidBookings.Count} passenger(s))",
+                                Details = $"Reconciled earnings for completed ride {ride.Origin} -> {ride.Destination} ({unpaidBookings.Count} passenger(s))",
                                 Date = DateTime.UtcNow
                             };
                             await context.WalletHistories.AddAsync(history);

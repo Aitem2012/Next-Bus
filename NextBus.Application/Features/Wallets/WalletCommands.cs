@@ -353,6 +353,8 @@ namespace NextBus.Application.Features.Wallets
 
             if (wallet == null || wallet.Balance < amount)
             {
+                otpEntity.IsUsed = false;
+                await _context.SaveChangesAsync(cancellationToken);
                 return Result<WalletDto>.Failure("Insufficient wallet balance for this withdrawal.");
             }
 
@@ -360,6 +362,8 @@ namespace NextBus.Application.Features.Wallets
             var recipientResult = await _paystackService.CreateTransferRecipientAsync(accountName, accountNumber, bankCode);
             if (!recipientResult.Succeeded)
             {
+                otpEntity.IsUsed = false;
+                await _context.SaveChangesAsync(cancellationToken);
                 return Result<WalletDto>.Failure($"Failed to create transfer recipient: {string.Join(", ", recipientResult.Errors)}");
             }
 
@@ -374,6 +378,8 @@ namespace NextBus.Application.Features.Wallets
 
             if (!transferResult.Succeeded)
             {
+                otpEntity.IsUsed = false;
+                await _context.SaveChangesAsync(cancellationToken);
                 return Result<WalletDto>.Failure($"Transfer initiation failed: {string.Join(", ", transferResult.Errors)}");
             }
 

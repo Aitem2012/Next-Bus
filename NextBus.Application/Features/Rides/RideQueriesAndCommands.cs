@@ -176,6 +176,27 @@ namespace NextBus.Application.Features.Rides
             decimal totalDriverEarnings = 0m;
             decimal totalCommission = 0m;
 
+            var adminEmail = _configuration["AdminUser:Email"] ?? "admin@nextbus.com";
+            var adminUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == adminEmail, cancellationToken)
+                ?? await _context.Users.FirstOrDefaultAsync(u => u.Email.Contains("admin"), cancellationToken);
+
+            if (adminUser == null)
+            {
+                adminUser = new AppUser
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    UserName = adminEmail,
+                    Email = adminEmail,
+                    NormalizedEmail = adminEmail.ToUpperInvariant(),
+                    Firstname = "System",
+                    Lastname = "Administrator"
+                };
+                await _context.Users.AddAsync(adminUser, cancellationToken);
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+
+            var adminUserId = adminUser.Id;
+
             foreach (var booking in payableBookings)
             {
                 var commission = Math.Round(booking.TotalFare * (commissionRate / 100m), 2);
@@ -189,17 +210,20 @@ namespace NextBus.Application.Features.Rides
                 totalDriverEarnings += driverEarnings;
                 totalCommission += commission;
 
-                var commTx = new Transaction
+                if (commission > 0)
                 {
-                    AppUserId = userId!,
-                    Amount = commission,
-                    Type = TransactionType.PlatformCommission,
-                    Reference = "COMM".GenerateRef(),
-                    Description = $"Platform {commissionRate}% commission on passenger booking {booking.Id} for ride {ride.Origin} -> {ride.Destination}",
-                    IsSuccessful = true,
-                    Date = DateTime.UtcNow
-                };
-                await _context.Transactions.AddAsync(commTx, cancellationToken);
+                    var commTx = new Transaction
+                    {
+                        AppUserId = adminUserId,
+                        Amount = commission,
+                        Type = TransactionType.PlatformCommission,
+                        Reference = "COMM_".GenerateRef(),
+                        Description = $"Platform {commissionRate}% commission on booking {booking.Id} ({ride.Origin} -> {ride.Destination})",
+                        IsSuccessful = true,
+                        Date = DateTime.UtcNow
+                    };
+                    await _context.Transactions.AddAsync(commTx, cancellationToken);
+                }
 
                 // Notify passenger that the journey is marked complete
                 await _notificationService.CreateNotificationAsync(
@@ -210,6 +234,46 @@ namespace NextBus.Application.Features.Rides
                     "/my-bookings");
             }
 
+            // 1. Credit Platform Revenue to Admin's Wallet
+            if (totalCommission > 0 && adminUser != null)
+            {
+                var adminWallet = await _context.Wallets.SingleOrDefaultAsync(w => w.AppUserId == adminUser.Id, cancellationToken);
+                if (adminWallet == null)
+                {
+                    adminWallet = new Wallet
+                    {
+                        AppUserId = adminUser.Id,
+                        Balance = 0m,
+                        Reference = "NXBS_ADMIN_W".GenerateRef(),
+                        LastUpdated = DateTime.UtcNow
+                    };
+                    await _context.Wallets.AddAsync(adminWallet, cancellationToken);
+                }
+
+                adminWallet.Balance += totalCommission;
+                adminWallet.LastUpdated = DateTime.UtcNow;
+
+                var adminHistory = new WalletHistory
+                {
+                    WalletId = adminWallet.Id,
+                    AppUserId = adminUser.Id,
+                    Amount = totalCommission,
+                    Type = "PlatformCommission",
+                    Reference = "COMM".GenerateRef(),
+                    Details = $"Platform {commissionRate}% commission received for ride {ride.Origin} -> {ride.Destination} ({payableBookings.Count} passenger(s))",
+                    Date = DateTime.UtcNow
+                };
+                await _context.WalletHistories.AddAsync(adminHistory, cancellationToken);
+
+                await _notificationService.CreateNotificationAsync(
+                    adminUser.Id,
+                    $"💰 Platform Commission Credited: ₦{totalCommission:N2}",
+                    $"Collected ₦{totalCommission:N2} in platform fees for completed commute ride {ride.Origin} → {ride.Destination}.",
+                    "Admin",
+                    "/admin");
+            }
+
+            // 2. Credit Driver's Net Commute Earnings to Driver's Wallet
             if (totalDriverEarnings > 0)
             {
                 var driverWallet = await _context.Wallets.SingleOrDefaultAsync(w => w.AppUserId == userId, cancellationToken);
@@ -225,7 +289,7 @@ namespace NextBus.Application.Features.Rides
                         Amount = totalDriverEarnings,
                         Type = "RideEarnings",
                         Reference = "EARN".GenerateRef(),
-                        Details = $"Earnings (net of {commissionRate}% platform commission) for completed ride {ride.Origin} -> {ride.Destination} ({payableBookings.Count} passenger(s))",
+                        Details = $"Net commute earnings for completed ride {ride.Origin} -> {ride.Destination} ({payableBookings.Count} passenger(s))",
                         Date = DateTime.UtcNow
                     };
                     await _context.WalletHistories.AddAsync(history, cancellationToken);
@@ -246,7 +310,7 @@ namespace NextBus.Application.Features.Rides
                     await _notificationService.CreateNotificationAsync(
                         userId!,
                         $"💰 Commute Earnings Credited: ₦{totalDriverEarnings:N2}",
-                        $"You earned ₦{totalDriverEarnings:N2} (net of ₦{totalCommission:N2} platform fee) for completing your ride {ride.Origin} → {ride.Destination}.",
+                        $"You earned ₦{totalDriverEarnings:N2} for completing your ride {ride.Origin} → {ride.Destination}.",
                         "Wallet",
                         "/wallet");
                 }
