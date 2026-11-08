@@ -631,7 +631,117 @@ namespace NextBus.Application.Features.Wallets
                 await _context.SaveChangesAsync(cancellationToken);
             }
 
-            return Result<WalletDto>.Success(_mapper.Map<WalletDto>(wallet));
+            var dto = _mapper.Map<WalletDto>(wallet);
+
+            // 1. Escrow funds currently held for active passenger bookings
+            var activePassengerBookings = await _context.RideBookings
+                .Include(b => b.Ride)
+                    .ThenInclude(r => r!.Driver)
+                .Where(b => b.PassengerId == userId 
+                         && b.PaymentStatus == PaymentStatus.Paid 
+                         && (b.BookingStatus == BookingStatus.Requested 
+                             || b.BookingStatus == BookingStatus.Accepted 
+                             || b.BookingStatus == BookingStatus.CheckedIn))
+                .OrderByDescending(b => b.RequestedAt)
+                .ToListAsync(cancellationToken);
+
+            dto.EscrowHeld = activePassengerBookings.Sum(b => b.TotalFare);
+            dto.PassengerEscrowHoldings = activePassengerBookings.Select(b => new PassengerEscrowDto
+            {
+                BookingId = b.Id,
+                RideId = b.RideId,
+                Route = b.Ride != null ? $"{b.Ride.Origin} → {b.Ride.Destination}" : "Transit Route",
+                DriverName = b.Ride?.Driver != null ? $"{b.Ride.Driver.Firstname} {b.Ride.Driver.Lastname}".Trim() : "Driver",
+                SeatsBooked = b.SeatsBooked,
+                TotalFare = b.TotalFare,
+                DepartureTime = b.Ride?.DepartureTime ?? b.RequestedAt,
+                BookingStatus = b.BookingStatus.ToString(),
+                HeldAt = b.RequestedAt
+            }).ToList();
+
+            // 2. Driver Analytics & Earnings Over Time
+            var completedRides = await _context.Rides
+                .Include(r => r.Bookings)
+                .Where(r => r.DriverId == userId && r.Status == RideStatus.Completed)
+                .OrderByDescending(r => r.DepartureTime)
+                .ToListAsync(cancellationToken);
+
+            var pendingRides = await _context.Rides
+                .Include(r => r.Bookings)
+                .Where(r => r.DriverId == userId && (r.Status == RideStatus.Scheduled || r.Status == RideStatus.InProgress))
+                .OrderByDescending(r => r.DepartureTime)
+                .ToListAsync(cancellationToken);
+
+            decimal pendingEarnings = 0m;
+            var earningsList = new List<DriverTripEarningDto>();
+
+            // Calculate pending earnings from upcoming / in-progress rides
+            foreach (var pr in pendingRides)
+            {
+                var acceptedBookings = pr.Bookings
+                    .Where(b => b.PaymentStatus == PaymentStatus.Paid && 
+                               (b.BookingStatus == BookingStatus.Accepted || b.BookingStatus == BookingStatus.CheckedIn))
+                    .ToList();
+
+                if (acceptedBookings.Count > 0)
+                {
+                    var gross = acceptedBookings.Sum(b => b.TotalFare);
+                    var comm = Math.Round(gross * 0.10m, 2);
+                    var net = gross - comm;
+                    pendingEarnings += net;
+
+                    earningsList.Add(new DriverTripEarningDto
+                    {
+                        RideId = pr.Id,
+                        Route = $"{pr.Origin} → {pr.Destination}",
+                        Date = pr.DepartureTime,
+                        PassengerCount = acceptedBookings.Count,
+                        GrossFare = gross,
+                        CommissionDeducted = comm,
+                        NetEarnings = net,
+                        Status = "Pending (In Escrow)"
+                    });
+                }
+            }
+
+            // Calculate completed ride earnings history
+            foreach (var cr in completedRides)
+            {
+                var booked = cr.Bookings
+                    .Where(b => b.BookingStatus == BookingStatus.Completed || b.BookingStatus == BookingStatus.Accepted || b.BookingStatus == BookingStatus.CheckedOut)
+                    .ToList();
+
+                var gross = booked.Sum(b => b.TotalFare);
+                var comm = booked.Sum(b => b.CommissionAmount > 0 ? b.CommissionAmount : Math.Round(b.TotalFare * 0.10m, 2));
+                var net = booked.Sum(b => b.DriverEarnings > 0 ? b.DriverEarnings : b.TotalFare - comm);
+
+                if (gross > 0)
+                {
+                    earningsList.Add(new DriverTripEarningDto
+                    {
+                        RideId = cr.Id,
+                        Route = $"{cr.Origin} → {cr.Destination}",
+                        Date = cr.DepartureTime,
+                        PassengerCount = booked.Count,
+                        GrossFare = gross,
+                        CommissionDeducted = comm,
+                        NetEarnings = net,
+                        Status = "Completed"
+                    });
+                }
+            }
+
+            dto.PendingDriverEarnings = pendingEarnings;
+            dto.CompletedDriverTrips = completedRides.Count;
+            dto.TotalDriverLifetimeEarnings = await _context.Transactions
+                .Where(t => t.AppUserId == userId && t.Type == TransactionType.RideEarnings && t.IsSuccessful)
+                .SumAsync(t => t.Amount, cancellationToken);
+            dto.TotalPlatformCommissionPaid = await _context.Transactions
+                .Where(t => t.AppUserId == userId && t.Type == TransactionType.PlatformCommission && t.IsSuccessful)
+                .SumAsync(t => t.Amount, cancellationToken);
+            dto.DriverEarningsHistory = earningsList.OrderByDescending(e => e.Date).ToList();
+
+            return Result<WalletDto>.Success(dto);
         }
     }
 

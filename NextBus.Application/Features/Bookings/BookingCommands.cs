@@ -88,7 +88,7 @@ namespace NextBus.Application.Features.Bookings
 
             if (ride.DriverId == userId)
             {
-                return Result<RideBookingDto>.Failure("You cannot book your own ride.");
+                return Result<RideBookingDto>.Failure("You cannot book your own offered ride. To manage this ride or review passenger requests, please visit My Offered Rides.");
             }
 
             if (ride.Status != RideStatus.Scheduled)

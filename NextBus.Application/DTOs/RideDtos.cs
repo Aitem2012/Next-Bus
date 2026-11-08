@@ -38,8 +38,21 @@ namespace NextBus.Application.DTOs
         public string? Stop1 { get; set; }
         public string? Stop2 { get; set; }
         public DateTime DepartureTime { get; set; }
-        public int AvailableSeats { get; set; }
-        public int TotalSeatsOffered { get; set; }
+
+        private int _availableSeats;
+        public int AvailableSeats
+        {
+            get => _availableSeats > 0 ? _availableSeats : _totalSeatsOffered;
+            set => _availableSeats = value;
+        }
+
+        private int _totalSeatsOffered;
+        public int TotalSeatsOffered
+        {
+            get => _totalSeatsOffered > 0 ? _totalSeatsOffered : _availableSeats;
+            set => _totalSeatsOffered = value;
+        }
+
         public decimal PricePerSeat { get; set; }
         public bool IsPublicTransit { get; set; }
         public string? Notes { get; set; }
@@ -53,8 +66,21 @@ namespace NextBus.Application.DTOs
         public string? Stop1 { get; set; }
         public string? Stop2 { get; set; }
         public DateTime DepartureTime { get; set; }
-        public int TotalSeatsOffered { get; set; }
-        public int AvailableSeats { get; set; }
+
+        private int _availableSeats;
+        public int AvailableSeats
+        {
+            get => _availableSeats > 0 ? _availableSeats : _totalSeatsOffered;
+            set => _availableSeats = value;
+        }
+
+        private int _totalSeatsOffered;
+        public int TotalSeatsOffered
+        {
+            get => _totalSeatsOffered > 0 ? _totalSeatsOffered : _availableSeats;
+            set => _totalSeatsOffered = value;
+        }
+
         public decimal PricePerSeat { get; set; }
         public bool IsPublicTransit { get; set; }
         public string? Notes { get; set; }

@@ -57,6 +57,9 @@ namespace NextBus.Persistence
                 // Seed Roles and Administrator User
                 await SeedRolesAndAdminUserAsync(scope.ServiceProvider, configuration, logger);
 
+                // Reconcile any completed rides whose driver earnings were not yet credited
+                await ReconcileCompletedRidesPayoutsAsync(context, configuration, logger);
+
                 logger.LogInformation("Database migration and seeding completed successfully.");
             }
             catch (Exception ex)
@@ -268,6 +271,102 @@ CREATE TABLE IF NOT EXISTS ""Notifications"" (
             catch (Exception ex)
             {
                 logger.LogWarning("Notice while verifying PostgreSQL database existence: {Message}. Proceeding to migrations...", ex.Message);
+            }
+        }
+
+        private static async Task ReconcileCompletedRidesPayoutsAsync(AppDbContext context, IConfiguration? configuration, ILogger logger)
+        {
+            try
+            {
+                var completedRides = await context.Rides
+                    .Include(r => r.Bookings)
+                    .Where(r => r.Status == RideStatus.Completed && r.Bookings.Any(b => 
+                        (b.BookingStatus == BookingStatus.Accepted || b.BookingStatus == BookingStatus.CheckedIn || b.BookingStatus == BookingStatus.CheckedOut) &&
+                        b.PaymentStatus == PaymentStatus.Paid))
+                    .ToListAsync();
+
+                if (!completedRides.Any()) return;
+
+                var commissionRate = decimal.TryParse(configuration?["PlatformSettings:CommissionPercentage"], out var cp) ? cp : 10.0m;
+
+                foreach (var ride in completedRides)
+                {
+                    var unpaidBookings = ride.Bookings.Where(b => 
+                        (b.BookingStatus == BookingStatus.Accepted || b.BookingStatus == BookingStatus.CheckedIn || b.BookingStatus == BookingStatus.CheckedOut) &&
+                        b.PaymentStatus == PaymentStatus.Paid).ToList();
+
+                    if (!unpaidBookings.Any()) continue;
+
+                    decimal totalEarnings = 0m;
+
+                    foreach (var booking in unpaidBookings)
+                    {
+                        var commission = Math.Round(booking.TotalFare * (commissionRate / 100m), 2);
+                        var driverEarnings = booking.TotalFare - commission;
+
+                        booking.CommissionAmount = commission;
+                        booking.DriverEarnings = driverEarnings;
+                        booking.BookingStatus = BookingStatus.Completed;
+                        booking.UpdatedAt = DateTime.UtcNow;
+
+                        totalEarnings += driverEarnings;
+
+                        var commTx = new Transaction
+                        {
+                            AppUserId = ride.DriverId,
+                            Amount = commission,
+                            Type = TransactionType.PlatformCommission,
+                            Reference = $"COMM_{booking.Id:N}",
+                            Description = $"Platform {commissionRate}% commission on passenger booking {booking.Id} for completed ride {ride.Origin} -> {ride.Destination}",
+                            IsSuccessful = true,
+                            Date = DateTime.UtcNow
+                        };
+                        await context.Transactions.AddAsync(commTx);
+                    }
+
+                    if (totalEarnings > 0)
+                    {
+                        var driverWallet = await context.Wallets.SingleOrDefaultAsync(w => w.AppUserId == ride.DriverId);
+                        if (driverWallet != null)
+                        {
+                            driverWallet.Balance += totalEarnings;
+                            driverWallet.LastUpdated = DateTime.UtcNow;
+
+                            var earnRef = $"EARN_{ride.Id:N}";
+                            var history = new WalletHistory
+                            {
+                                WalletId = driverWallet.Id,
+                                AppUserId = ride.DriverId,
+                                Amount = totalEarnings,
+                                Type = "RideEarnings",
+                                Reference = earnRef,
+                                Details = $"Reconciled earnings (net of {commissionRate}% fee) for completed ride {ride.Origin} -> {ride.Destination} ({unpaidBookings.Count} passenger(s))",
+                                Date = DateTime.UtcNow
+                            };
+                            await context.WalletHistories.AddAsync(history);
+
+                            var earnTx = new Transaction
+                            {
+                                AppUserId = ride.DriverId,
+                                Amount = totalEarnings,
+                                Type = TransactionType.RideEarnings,
+                                Reference = earnRef,
+                                Description = history.Details,
+                                IsSuccessful = true,
+                                Date = DateTime.UtcNow
+                            };
+                            await context.Transactions.AddAsync(earnTx);
+                        }
+                    }
+
+                    logger.LogInformation("Reconciled completed ride {RideId}: credited ₦{Earnings} to driver {DriverId}", ride.Id, totalEarnings, ride.DriverId);
+                }
+
+                await context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning("Notice while reconciling completed rides payouts: {Message}", ex.Message);
             }
         }
     }

@@ -20,3 +20,4 @@ namespace NextBus.Application.DTOs
         public int UnreadCount { get; set; }
     }
 }
+

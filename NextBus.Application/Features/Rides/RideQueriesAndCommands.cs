@@ -128,15 +128,18 @@ namespace NextBus.Application.Features.Rides
         private readonly IAppDbContext _context;
         private readonly ICurrentUserService _currentUserService;
         private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
+        private readonly INotificationService _notificationService;
 
         public CompleteRideCommandHandler(
             IAppDbContext context,
             ICurrentUserService currentUserService,
-            Microsoft.Extensions.Configuration.IConfiguration configuration)
+            Microsoft.Extensions.Configuration.IConfiguration configuration,
+            INotificationService notificationService)
         {
             _context = context;
             _currentUserService = currentUserService;
             _configuration = configuration;
+            _notificationService = notificationService;
         }
 
         public async Task<Result> Handle(CompleteRideCommand request, CancellationToken cancellationToken)
@@ -144,6 +147,8 @@ namespace NextBus.Application.Features.Rides
             var userId = _currentUserService.UserId;
             var ride = await _context.Rides
                 .Include(r => r.Bookings)
+                    .ThenInclude(b => b.Passenger)
+                .Include(r => r.Driver)
                 .FirstOrDefaultAsync(r => r.Id == request.RideId && r.DriverId == userId, cancellationToken);
 
             if (ride == null)
@@ -161,11 +166,17 @@ namespace NextBus.Application.Features.Rides
 
             var commissionRate = decimal.TryParse(_configuration["PlatformSettings:CommissionPercentage"], out var cp) ? cp : 10.0m;
 
-            var acceptedBookings = ride.Bookings.Where(b => b.BookingStatus == BookingStatus.Accepted).ToList();
+            // Pay for all accepted, checked-in, or checked-out passenger bookings
+            var payableBookings = ride.Bookings.Where(b => 
+                (b.BookingStatus == BookingStatus.Accepted || 
+                 b.BookingStatus == BookingStatus.CheckedIn || 
+                 b.BookingStatus == BookingStatus.CheckedOut) &&
+                b.PaymentStatus == PaymentStatus.Paid).ToList();
+
             decimal totalDriverEarnings = 0m;
             decimal totalCommission = 0m;
 
-            foreach (var booking in acceptedBookings)
+            foreach (var booking in payableBookings)
             {
                 var commission = Math.Round(booking.TotalFare * (commissionRate / 100m), 2);
                 var driverEarnings = booking.TotalFare - commission;
@@ -189,6 +200,14 @@ namespace NextBus.Application.Features.Rides
                     Date = DateTime.UtcNow
                 };
                 await _context.Transactions.AddAsync(commTx, cancellationToken);
+
+                // Notify passenger that the journey is marked complete
+                await _notificationService.CreateNotificationAsync(
+                    booking.PassengerId,
+                    "🎉 Commute Trip Completed",
+                    $"Your ride from {booking.PickupLocation} to {booking.DropoffLocation} has been marked complete. Thank you for commuting with NextBus!",
+                    "Ride",
+                    "/my-bookings");
             }
 
             if (totalDriverEarnings > 0)
@@ -206,7 +225,7 @@ namespace NextBus.Application.Features.Rides
                         Amount = totalDriverEarnings,
                         Type = "RideEarnings",
                         Reference = "EARN".GenerateRef(),
-                        Details = $"Earnings (net of {commissionRate}% platform commission) for completed ride {ride.Origin} -> {ride.Destination} ({acceptedBookings.Count} passenger(s))",
+                        Details = $"Earnings (net of {commissionRate}% platform commission) for completed ride {ride.Origin} -> {ride.Destination} ({payableBookings.Count} passenger(s))",
                         Date = DateTime.UtcNow
                     };
                     await _context.WalletHistories.AddAsync(history, cancellationToken);
@@ -222,6 +241,14 @@ namespace NextBus.Application.Features.Rides
                         Date = DateTime.UtcNow
                     };
                     await _context.Transactions.AddAsync(earnTx, cancellationToken);
+
+                    // Notify driver that funds were credited
+                    await _notificationService.CreateNotificationAsync(
+                        userId!,
+                        $"💰 Commute Earnings Credited: ₦{totalDriverEarnings:N2}",
+                        $"You earned ₦{totalDriverEarnings:N2} (net of ₦{totalCommission:N2} platform fee) for completing your ride {ride.Origin} → {ride.Destination}.",
+                        "Wallet",
+                        "/wallet");
                 }
             }
 
@@ -272,7 +299,7 @@ namespace NextBus.Application.Features.Rides
 
             // Automatically refund all passengers who have paid bookings
             var activeBookings = ride.Bookings
-                .Where(b => b.BookingStatus == BookingStatus.Accepted || b.BookingStatus == BookingStatus.Requested)
+                .Where(b => (b.BookingStatus == BookingStatus.Accepted || b.BookingStatus == BookingStatus.Requested || b.BookingStatus == BookingStatus.CheckedIn) && b.PaymentStatus == PaymentStatus.Paid)
                 .ToList();
 
             foreach (var booking in activeBookings)

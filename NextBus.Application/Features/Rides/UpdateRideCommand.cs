@@ -13,24 +13,23 @@ using NextBus.Domain.Enums;
 
 namespace NextBus.Application.Features.Rides
 {
-    public record UpdateRideCommand(Guid RideId, UpdateRideDto Dto) : IRequest<Result<RideDto>>
+    public class UpdateRideCommand : IRequest<Result<RideDto>>
     {
-        public UpdateRideDto Dto { get; init; } = Normalize(Dto);
+        public Guid RideId { get; }
+        public UpdateRideDto Dto { get; }
 
-        private static UpdateRideDto Normalize(UpdateRideDto dto)
+        public UpdateRideCommand(Guid rideId, UpdateRideDto dto)
         {
-            if (dto != null)
+            RideId = rideId;
+            Dto = dto ?? new UpdateRideDto();
+            if (Dto.AvailableSeats <= 0 && Dto.TotalSeatsOffered > 0)
             {
-                if (dto.AvailableSeats <= 0 && dto.TotalSeatsOffered > 0)
-                {
-                    dto.AvailableSeats = dto.TotalSeatsOffered;
-                }
-                else if (dto.TotalSeatsOffered <= 0 && dto.AvailableSeats > 0)
-                {
-                    dto.TotalSeatsOffered = dto.AvailableSeats;
-                }
+                Dto.AvailableSeats = Dto.TotalSeatsOffered;
             }
-            return dto!;
+            if (Dto.TotalSeatsOffered <= 0 && Dto.AvailableSeats > 0)
+            {
+                Dto.TotalSeatsOffered = Dto.AvailableSeats;
+            }
         }
     }
 
@@ -41,7 +40,9 @@ namespace NextBus.Application.Features.Rides
             RuleFor(x => x.RideId).NotEmpty().WithMessage("Ride ID is required.");
             RuleFor(x => x.Dto.Origin).NotEmpty().WithMessage("Origin (starting location) is required.");
             RuleFor(x => x.Dto.Destination).NotEmpty().WithMessage("Destination is required.");
-            RuleFor(x => x.Dto.TotalSeatsOffered).GreaterThan(0).WithMessage("Total seats must be greater than 0.");
+            RuleFor(x => x.Dto.TotalSeatsOffered > 0 ? x.Dto.TotalSeatsOffered : x.Dto.AvailableSeats)
+                .GreaterThan(0)
+                .WithMessage("Total seats must be greater than 0.");
             RuleFor(x => x.Dto.PricePerSeat).GreaterThan(0).WithMessage("Fare per seat must be greater than 0.");
             RuleFor(x => x.Dto.VehicleId).NotEmpty().WithMessage("Vehicle is required.");
         }
@@ -160,3 +161,4 @@ namespace NextBus.Application.Features.Rides
         }
     }
 }
+

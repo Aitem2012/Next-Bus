@@ -15,3 +15,4 @@ namespace NextBus.Domain.Entities
         public virtual AppUser? AppUser { get; set; }
     }
 }
+

@@ -13,3 +13,4 @@ namespace NextBus.Application.Common.Interfaces
             string? actionUrl = null);
     }
 }
+

@@ -604,7 +604,8 @@ namespace NextBus.Tests
                 .AddInMemoryCollection(inMemorySettings)
                 .Build();
 
-            var completeHandler = new CompleteRideCommandHandler(context, currentUserServiceMock.Object, configuration);
+            var notifMock = new Mock<INotificationService>();
+            var completeHandler = new CompleteRideCommandHandler(context, currentUserServiceMock.Object, configuration, notifMock.Object);
             var result = await completeHandler.Handle(new CompleteRideCommand(ride.Id), CancellationToken.None);
 
             Assert.True(result.Succeeded);
@@ -631,6 +632,139 @@ namespace NextBus.Tests
                 .ToListAsync();
             Assert.Equal(2, commissionTransactions.Count);
             Assert.Equal(300m, commissionTransactions.Sum(t => t.Amount)); // 100 + 200 = 300 total platform commission
+        }
+
+        [Fact]
+        public async Task CompleteRide_WithCheckedInAndCheckedOutBookings_CreditsDriverWallet()
+        {
+            using var context = CreateInMemoryDbContext();
+
+            var driver = new AppUser
+            {
+                Id = "driver-checkedout-1",
+                Email = "driver-co@test.com",
+                UserName = "driver-co@test.com",
+                Firstname = "Driver",
+                Lastname = "One"
+            };
+            var driverWallet = new Wallet
+            {
+                Id = Guid.NewGuid(),
+                AppUserId = driver.Id,
+                Balance = 0m,
+                Reference = "DRV_W1",
+                LastUpdated = DateTime.UtcNow
+            };
+            await context.Users.AddAsync(driver);
+            await context.Wallets.AddAsync(driverWallet);
+
+            var vehicle = new Vehicle
+            {
+                Id = Guid.NewGuid(),
+                AppUserId = driver.Id,
+                Make = "Toyota",
+                Model = "Corolla",
+                PlateNumber = "LAG-123-BA",
+                TotalSeats = 4
+            };
+            await context.Vehicles.AddAsync(vehicle);
+
+            var ride = new Ride
+            {
+                Id = Guid.NewGuid(),
+                DriverId = driver.Id,
+                VehicleId = vehicle.Id,
+                Origin = "Ikorodu",
+                Destination = "Ikeja",
+                DepartureTime = DateTime.UtcNow.AddHours(1),
+                PricePerSeat = 1500m,
+                TotalSeatsOffered = 4,
+                AvailableSeats = 2,
+                Status = RideStatus.InProgress
+            };
+            await context.Rides.AddAsync(ride);
+
+            var p1 = new AppUser
+            {
+                Id = "passenger-in",
+                Email = "p1@test.com",
+                UserName = "p1@test.com",
+                Firstname = "Passenger",
+                Lastname = "One"
+            };
+            var p2 = new AppUser
+            {
+                Id = "passenger-out",
+                Email = "p2@test.com",
+                UserName = "p2@test.com",
+                Firstname = "Passenger",
+                Lastname = "Two"
+            };
+            await context.Users.AddRangeAsync(p1, p2);
+
+            // Passenger 1 has CheckedIn
+            var booking1 = new RideBooking
+            {
+                Id = Guid.NewGuid(),
+                RideId = ride.Id,
+                PassengerId = "passenger-in",
+                PickupLocation = "Ikorodu",
+                DropoffLocation = "Maryland",
+                SeatsBooked = 1,
+                PricePerSeat = 1500m,
+                TotalFare = 1500m,
+                BookingStatus = BookingStatus.CheckedIn,
+                PaymentStatus = PaymentStatus.Paid,
+                RequestedAt = DateTime.UtcNow
+            };
+
+            // Passenger 2 has CheckedOut
+            var booking2 = new RideBooking
+            {
+                Id = Guid.NewGuid(),
+                RideId = ride.Id,
+                PassengerId = "passenger-out",
+                PickupLocation = "Ikorodu",
+                DropoffLocation = "Ikeja",
+                SeatsBooked = 1,
+                PricePerSeat = 1500m,
+                TotalFare = 1500m,
+                BookingStatus = BookingStatus.CheckedOut,
+                PaymentStatus = PaymentStatus.Paid,
+                RequestedAt = DateTime.UtcNow
+            };
+
+            await context.RideBookings.AddRangeAsync(booking1, booking2);
+            await context.SaveChangesAsync();
+
+            var currentUserServiceMock = new Mock<ICurrentUserService>();
+            currentUserServiceMock.Setup(c => c.UserId).Returns(driver.Id);
+
+            var inMemorySettings = new Dictionary<string, string?>
+            {
+                { "PlatformSettings:CommissionPercentage", "10.0" }
+            };
+            IConfiguration configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(inMemorySettings)
+                .Build();
+
+            var notifMock = new Mock<INotificationService>();
+            var completeHandler = new CompleteRideCommandHandler(context, currentUserServiceMock.Object, configuration, notifMock.Object);
+            var result = await completeHandler.Handle(new CompleteRideCommand(ride.Id), CancellationToken.None);
+
+            Assert.True(result.Succeeded);
+
+            // Gross fare = 1500 + 1500 = 3000. 10% commission = 300. Net driver earnings = 2700.
+            var updatedWallet = await context.Wallets.FindAsync(driverWallet.Id);
+            Assert.Equal(2700m, updatedWallet!.Balance);
+
+            var b1 = await context.RideBookings.FindAsync(booking1.Id);
+            Assert.Equal(BookingStatus.Completed, b1!.BookingStatus);
+            Assert.Equal(1350m, b1.DriverEarnings);
+
+            var b2 = await context.RideBookings.FindAsync(booking2.Id);
+            Assert.Equal(BookingStatus.Completed, b2!.BookingStatus);
+            Assert.Equal(1350m, b2.DriverEarnings);
         }
 
         [Fact]
@@ -953,6 +1087,27 @@ namespace NextBus.Tests
             Assert.True(checkOutResult.Succeeded);
             Assert.Equal(BookingStatus.CheckedOut, checkOutResult.Data.BookingStatus);
             Assert.NotNull(checkOutResult.Data.CheckedOutAt);
+        }
+
+        [Fact]
+        public async Task CreateRideCommandValidator_WhenOnlyTotalSeatsOfferedProvided_PassesValidation()
+        {
+            var dto = new CreateRideDto
+            {
+                VehicleId = Guid.NewGuid(),
+                Origin = "Ikorodu",
+                Destination = "Ikeja",
+                DepartureTime = DateTime.UtcNow.AddDays(1),
+                TotalSeatsOffered = 4,
+                PricePerSeat = 1500
+            };
+
+            var command = new CreateRideCommand(dto);
+            var validator = new CreateRideCommandValidator();
+            var result = await validator.ValidateAsync(command);
+
+            Assert.Equal(4, command.Dto.AvailableSeats);
+            Assert.True(result.IsValid, string.Join("; ", result.Errors.Select(e => e.ErrorMessage)));
         }
     }
 }
